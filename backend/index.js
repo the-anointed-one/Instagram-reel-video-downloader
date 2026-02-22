@@ -1,6 +1,6 @@
 'use strict';
 
-const http = require('http');
+const https = require('https');
 
 /**
  * backend/index.js
@@ -52,13 +52,16 @@ app.use(express.urlencoded({ extended: false }));
 // ── Request logging ──────────────────────────────────────────────
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
-// ── Rate limiting (applied to all /api routes) ───────────────────
-app.use('/api', rateLimiter);
-
-// Health check — useful for Render/Railway deploy probes
+// ── Health checks (BEFORE rate limiting) ─────────────────────────
+app.get('/', (req, res) => {
+    res.json({ status: 'ok', service: 'reelfetch-api', timestamp: new Date().toISOString() });
+});
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// ── Rate limiting (applied to all /api routes) ───────────────────
+app.use('/api', rateLimiter);
 
 // ── Routes ───────────────────────────────────────────────────────
 app.use('/api', downloadRouter);
@@ -91,7 +94,7 @@ async function start() {
             const FOURTEEN_MIN = 14 * 60 * 1000;
 
             setInterval(() => {
-                http.get(pingUrl, (res) => {
+                https.get(pingUrl, (res) => {
                     console.log(`[self-ping] ${res.statusCode} @ ${new Date().toISOString()}`);
                 }).on('error', (err) => {
                     console.warn('[self-ping] Failed:', err.message);
