@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Environment variables
+.env
+**/.env
+
+# Build outputs
+dist/
+build/
+.next/
+**/.next/
+**/dist/
+**/build/
+
+# Intermediate / temp files (always regenerated)
+.tmp/
+
+# Downloaded media — don't commit large files
+downloads/
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Playwright browser binaries (downloaded separately)
+**/ms-playwright/

@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --gradient-start: #6366f1;
+    --gradient-end: #8b5cf6;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-surface-900 text-slate-100 font-sans antialiased;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.15), transparent),
+      radial-gradient(ellipse 60% 40% at 80% 110%, rgba(139, 92, 246, 0.1), transparent);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 bg-gradient-to-r from-brand-600 to-purple-600 hover:from-brand-500 hover:to-purple-500 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-200 shadow-lg shadow-brand-600/25 hover:shadow-brand-500/40 hover:shadow-xl active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 bg-white/10 hover:bg-white/15 border border-white/20 text-white font-medium px-5 py-2.5 rounded-xl transition-all duration-200 active:scale-[0.98];
+  }
+
+  .input-field {
+    @apply w-full bg-surface-800/80 border border-white/10 text-slate-100 placeholder-slate-500 rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-brand-500/60 focus:border-brand-500/40 transition-all duration-200 text-sm;
+  }
+
+  /* ── Blog prose styles ───────────────────────────────── */
+  .prose-blog {
+    @apply text-slate-300 leading-relaxed;
+  }
+
+  .prose-blog h1 {
+    @apply text-3xl sm:text-4xl font-bold text-white mt-0 mb-6;
+  }
+
+  .prose-blog h2 {
+    @apply text-xl sm:text-2xl font-semibold text-white mt-10 mb-4;
+  }
+
+  .prose-blog h3 {
+    @apply text-lg font-semibold text-slate-200 mt-8 mb-3;
+  }
+
+  .prose-blog p {
+    @apply text-sm sm:text-base text-slate-400 mb-5 leading-relaxed;
+  }
+
+  .prose-blog ul,
+  .prose-blog ol {
+    @apply text-sm sm:text-base text-slate-400 mb-5 pl-6 space-y-2;
+  }
+
+  .prose-blog ul {
+    @apply list-disc;
+  }
+
+  .prose-blog ol {
+    @apply list-decimal;
+  }
+
+  .prose-blog li {
+    @apply leading-relaxed;
+  }
+
+  .prose-blog a {
+    @apply text-brand-400 underline underline-offset-2 hover:text-brand-300 transition-colors;
+  }
+
+  .prose-blog blockquote {
+    @apply border-l-4 border-brand-500/40 pl-4 italic text-slate-500 my-6;
+  }
+
+  .prose-blog code {
+    @apply bg-white/10 text-brand-300 text-sm px-1.5 py-0.5 rounded;
+  }
+
+  .prose-blog strong {
+    @apply text-slate-200 font-semibold;
+  }
+
+  .prose-blog hr {
+    @apply border-white/10 my-8;
+  }
+}
