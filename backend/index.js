@@ -55,13 +55,13 @@ app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 // ── Rate limiting (applied to all /api routes) ───────────────────
 app.use('/api', rateLimiter);
 
-// ── Routes ───────────────────────────────────────────────────────
-app.use('/api', downloadRouter);
-
 // Health check — useful for Render/Railway deploy probes
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// ── Routes ───────────────────────────────────────────────────────
+app.use('/api', downloadRouter);
 
 // ── 404 handler ───────────────────────────────────────────────────
 app.use((req, res) => {
