@@ -19,7 +19,7 @@ const path = require('path');
 
 // ── Config ───────────────────────────────────────────────────────
 const YTDLP_PATH = process.env.YTDLP_PATH || 'yt-dlp';
-const YTDLP_TIMEOUT = 15000; // 15s max
+const YTDLP_TIMEOUT = 30000; // 30s max
 
 const REQUEST_HEADERS = {
     'User-Agent':
