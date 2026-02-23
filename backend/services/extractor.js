@@ -127,7 +127,72 @@ async function tryCheerioExtraction(url) {
     }
 }
 
-// ── Strategy 2: yt-dlp ───────────────────────────────────────────
+// ── Strategy 2: Instagram Embed Page ─────────────────────────────
+
+async function tryEmbedExtraction(url) {
+    try {
+        // Convert reel URL to embed URL
+        const shortcodeMatch = url.match(/\/(reel|p)\/([A-Za-z0-9_-]+)/);
+        if (!shortcodeMatch) return null;
+        const shortcode = shortcodeMatch[2];
+
+        const embedUrl = `https://www.instagram.com/p/${shortcode}/embed/`;
+        console.log('[extractor] Trying embed page:', embedUrl);
+
+        const response = await axios.get(embedUrl, {
+            headers: {
+                ...REQUEST_HEADERS,
+                'Referer': 'https://www.instagram.com/',
+            },
+            timeout: 10000,
+            maxRedirects: 5,
+            validateStatus: (s) => s < 500,
+        });
+
+        if (response.status !== 200) return null;
+
+        const html = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
+
+        // Try to find video URL in embed HTML
+        // Embed pages often have the video in a <video> tag or in embedded JSON
+        const videoSrcMatch = html.match(/<video[^>]*src=["']([^"']+)["']/i);
+        if (videoSrcMatch && videoSrcMatch[1].startsWith('http')) return videoSrcMatch[1];
+
+        // Check for data-video-url or similar attributes
+        const dataVideoMatch = html.match(/data-video-url=["']([^"']+)["']/i);
+        if (dataVideoMatch) return dataVideoMatch[1];
+
+        // Check for video_url in inline scripts
+        const inlineVideoMatch = html.match(/"video_url"\s*:\s*"([^"]+)"/);
+        if (inlineVideoMatch) {
+            try { return JSON.parse(`"${inlineVideoMatch[1]}"`); } catch { return inlineVideoMatch[1]; }
+        }
+
+        // Check for .mp4 URLs in the HTML
+        const mp4Match = html.match(/(https?:\/\/[^\s"']+\.mp4[^\s"']*)/i);
+        if (mp4Match) return mp4Match[1];
+
+        // Check embedded JSON (window.__additionalDataLoaded or similar)
+        const jsonDataMatch = html.match(/window\.__additionalDataLoaded\s*\(\s*['"][^'"]*['"]\s*,\s*(\{.+?\})\s*\)/s);
+        if (jsonDataMatch) {
+            const parsed = safeJsonParse(jsonDataMatch[1]);
+            if (parsed) {
+                const videoUrl = findVideoUrl(parsed);
+                if (videoUrl) return videoUrl;
+            }
+        }
+
+        // Also try finding in any JSON-like structure
+        const $ = cheerio.load(html);
+        const videoUrl = extractFromLdJson($) || extractFromScriptTags($) || extractFromRawHtml(html);
+        return videoUrl || null;
+    } catch (err) {
+        console.log('[extractor] Embed strategy failed:', err.message);
+        return null;
+    }
+}
+
+// ── Strategy 3: yt-dlp ───────────────────────────────────────────
 
 function extractWithYtDlp(url) {
     return new Promise((resolve, reject) => {
@@ -195,14 +260,24 @@ async function extractReelData(url) {
         if (err.message.includes('not found') || err.message.includes('private')) throw err;
     }
 
-    // 3. Fall back to yt-dlp if Cheerio didn't find a URL
+    // 3. Try embed page extraction (less protected than main page)
     if (!videoUrl) {
         try {
-            console.log('[extractor] Cheerio found no video data, falling back to yt-dlp...');
+            videoUrl = await tryEmbedExtraction(url);
+            if (videoUrl) console.log('[extractor] ✅ Embed extraction succeeded');
+        } catch (err) {
+            console.log('[extractor] Embed extraction failed:', err.message);
+        }
+    }
+
+    // 4. Fall back to yt-dlp if nothing else worked
+    if (!videoUrl) {
+        try {
+            console.log('[extractor] HTML strategies found no video data, falling back to yt-dlp...');
             videoUrl = await extractWithYtDlp(url);
             console.log('[extractor] ✅ yt-dlp extraction succeeded');
         } catch {
-            // Both strategies failed
+            // All strategies failed
         }
     }
 
