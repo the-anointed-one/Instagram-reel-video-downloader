@@ -3,7 +3,7 @@ export function WebAppJsonLd() {
         '@context': 'https://schema.org',
         '@type': 'WebApplication',
         name: 'ReelFetch',
-        url: 'https://reelfetch.com',
+        url: process.env.NEXT_PUBLIC_SITE_URL || 'https://instagram-reel-downloader.byteoasis.ng',
         description:
             'Download public Instagram Reels instantly. Paste a Reel URL and get a direct MP4 download link — fast, free, and no login required.',
         applicationCategory: 'MultimediaApplication',

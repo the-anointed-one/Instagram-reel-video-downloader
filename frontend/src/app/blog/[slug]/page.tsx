@@ -56,7 +56,7 @@ export default async function BlogPostPage({ params }: Props) {
         publisher: {
             '@type': 'Organization',
             name: 'ReelFetch',
-            url: 'https://reelfetch.com',
+            url: process.env.NEXT_PUBLIC_SITE_URL || 'https://instagram-reel-downloader.byteoasis.ng',
         },
     };
 

@@ -16,7 +16,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-    metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://reelfetch.com'),
+    metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://instagram-reel-downloader.byteoasis.ng'),
     title: {
         default: 'Instagram Reel Downloader — Download Reels Video Free | ReelFetch',
         template: '%s | ReelFetch',
