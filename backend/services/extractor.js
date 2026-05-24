@@ -3,23 +3,22 @@
 /**
  * backend/services/extractor.js
  *
- * Fetches a public Instagram Reel's video URL and metadata.
+ * Routes extraction to the correct platform-specific handler.
  *
- * Strategies (in order):
- *   1. HTML fetch + Cheerio parse (ld+json, script tags, regex) — fast, no deps
- *   2. yt-dlp via child_process — reliable, handles JS-rendered pages
- *
- * Metadata is enriched via Instagram's oEmbed API when available.
+ * Supported platforms:
+ *   - instagram  → HTML/embed scraping → yt-dlp fallback
+ *   - tiktok     → yt-dlp (no-watermark via API format)
+ *   - facebook   → yt-dlp
+ *   - youtube    → yt-dlp
  */
 
 const axios = require('axios');
 const cheerio = require('cheerio');
 const { execFile } = require('child_process');
-const path = require('path');
 
 // ── Config ───────────────────────────────────────────────────────
 const YTDLP_PATH = process.env.YTDLP_PATH || 'yt-dlp';
-const YTDLP_TIMEOUT = 30000; // 30s max
+const YTDLP_TIMEOUT = 45000; // 45s — TikTok can be slow
 
 const REQUEST_HEADERS = {
     'User-Agent':
@@ -35,7 +34,7 @@ const REQUEST_HEADERS = {
     Connection: 'keep-alive',
 };
 
-// ── Helpers ──────────────────────────────────────────────────────
+// ── Generic Helpers ──────────────────────────────────────────────
 
 function safeJsonParse(str) {
     try { return JSON.parse(str); } catch { return null; }
@@ -55,7 +54,66 @@ function findVideoUrl(obj, depth = 0) {
     return null;
 }
 
-// ── Strategy 1: Cheerio HTML parsing ─────────────────────────────
+// ── yt-dlp Wrapper ───────────────────────────────────────────────
+
+/**
+ * Run yt-dlp with given extra args and return the first video URL.
+ * @param {string} url
+ * @param {string[]} extraArgs
+ */
+function runYtDlp(url, extraArgs = []) {
+    return new Promise((resolve, reject) => {
+        const args = [
+            '--get-url',
+            '--no-warnings',
+            '--no-playlist',
+            '--format', 'best[ext=mp4]/bestvideo[ext=mp4]+bestaudio/best',
+            ...extraArgs,
+            url,
+        ];
+
+        console.log(`[extractor] yt-dlp args: ${args.join(' ')}`);
+
+        execFile(YTDLP_PATH, args, { timeout: YTDLP_TIMEOUT }, (err, stdout, stderr) => {
+            if (err) {
+                console.log('[extractor] yt-dlp error:', err.message);
+                if (stderr) console.log('[extractor] yt-dlp stderr:', stderr.trim().slice(0, 500));
+                return reject(new Error(`yt-dlp extraction failed: ${err.message}`));
+            }
+            const urls = stdout.trim().split('\n').filter(Boolean);
+            if (urls.length > 0 && urls[0].startsWith('http')) {
+                resolve(urls[0]);
+            } else {
+                reject(new Error('yt-dlp returned no URL'));
+            }
+        });
+    });
+}
+
+// ── yt-dlp JSON Metadata ─────────────────────────────────────────
+
+function runYtDlpJson(url, extraArgs = []) {
+    return new Promise((resolve, reject) => {
+        const args = [
+            '--dump-json',
+            '--no-warnings',
+            '--no-playlist',
+            ...extraArgs,
+            url,
+        ];
+
+        execFile(YTDLP_PATH, args, { timeout: YTDLP_TIMEOUT }, (err, stdout) => {
+            if (err) return reject(new Error('yt-dlp JSON failed'));
+            const data = safeJsonParse(stdout.trim());
+            if (data) resolve(data);
+            else reject(new Error('yt-dlp returned invalid JSON'));
+        });
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INSTAGRAM
+// ═══════════════════════════════════════════════════════════════
 
 function extractFromLdJson($) {
     const scripts = $('script[type="application/ld+json"]');
@@ -109,122 +167,54 @@ async function tryCheerioExtraction(url) {
             maxRedirects: 3,
             validateStatus: (s) => s < 500,
         });
-
         if (response.status === 404) throw new Error('Reel not found (404).');
         if (response.status === 403 || response.status === 401) throw new Error('Reel is private or requires auth.');
         if (response.status !== 200) return null;
-
         const html = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
         const $ = cheerio.load(html);
-
-        const videoUrl = extractFromLdJson($) || extractFromScriptTags($) || extractFromRawHtml(html);
-        return videoUrl || null;
+        return extractFromLdJson($) || extractFromScriptTags($) || extractFromRawHtml(html) || null;
     } catch (err) {
-        // Re-throw specific errors (404, 403)
         if (err.message.includes('not found') || err.message.includes('private')) throw err;
         console.log('[extractor] Cheerio strategy failed:', err.message);
         return null;
     }
 }
 
-// ── Strategy 2: Instagram Embed Page ─────────────────────────────
-
 async function tryEmbedExtraction(url) {
     try {
-        // Convert reel URL to embed URL
         const shortcodeMatch = url.match(/\/(reel|p)\/([A-Za-z0-9_-]+)/);
         if (!shortcodeMatch) return null;
         const shortcode = shortcodeMatch[2];
-
         const embedUrl = `https://www.instagram.com/p/${shortcode}/embed/`;
-        console.log('[extractor] Trying embed page:', embedUrl);
-
         const response = await axios.get(embedUrl, {
-            headers: {
-                ...REQUEST_HEADERS,
-                'Referer': 'https://www.instagram.com/',
-            },
+            headers: { ...REQUEST_HEADERS, 'Referer': 'https://www.instagram.com/' },
             timeout: 10000,
             maxRedirects: 5,
             validateStatus: (s) => s < 500,
         });
-
         if (response.status !== 200) return null;
-
         const html = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
-
-        // Try to find video URL in embed HTML
-        // Embed pages often have the video in a <video> tag or in embedded JSON
         const videoSrcMatch = html.match(/<video[^>]*src=["']([^"']+)["']/i);
-        if (videoSrcMatch && videoSrcMatch[1].startsWith('http')) return videoSrcMatch[1];
-
-        // Check for data-video-url or similar attributes
+        if (videoSrcMatch?.[1]?.startsWith('http')) return videoSrcMatch[1];
         const dataVideoMatch = html.match(/data-video-url=["']([^"']+)["']/i);
         if (dataVideoMatch) return dataVideoMatch[1];
-
-        // Check for video_url in inline scripts
         const inlineVideoMatch = html.match(/"video_url"\s*:\s*"([^"]+)"/);
         if (inlineVideoMatch) {
             try { return JSON.parse(`"${inlineVideoMatch[1]}"`); } catch { return inlineVideoMatch[1]; }
         }
-
-        // Check for .mp4 URLs in the HTML
         const mp4Match = html.match(/(https?:\/\/[^\s"']+\.mp4[^\s"']*)/i);
         if (mp4Match) return mp4Match[1];
-
-        // Check embedded JSON (window.__additionalDataLoaded or similar)
-        const jsonDataMatch = html.match(/window\.__additionalDataLoaded\s*\(\s*['"][^'"]*['"]\s*,\s*(\{.+?\})\s*\)/s);
-        if (jsonDataMatch) {
-            const parsed = safeJsonParse(jsonDataMatch[1]);
-            if (parsed) {
-                const videoUrl = findVideoUrl(parsed);
-                if (videoUrl) return videoUrl;
-            }
-        }
-
-        // Also try finding in any JSON-like structure
         const $ = cheerio.load(html);
-        const videoUrl = extractFromLdJson($) || extractFromScriptTags($) || extractFromRawHtml(html);
-        return videoUrl || null;
+        return extractFromLdJson($) || extractFromScriptTags($) || extractFromRawHtml(html) || null;
     } catch (err) {
         console.log('[extractor] Embed strategy failed:', err.message);
         return null;
     }
 }
 
-// ── Strategy 3: yt-dlp ───────────────────────────────────────────
-
-function extractWithYtDlp(url) {
-    return new Promise((resolve, reject) => {
-        const args = [
-            '--get-url',
-            '--no-warnings',
-            '--no-playlist',
-            '--format', 'best[ext=mp4]/best',
-            url,
-        ];
-
-        const child = execFile(YTDLP_PATH, args, { timeout: YTDLP_TIMEOUT }, (err, stdout, stderr) => {
-            if (err) {
-                console.log('[extractor] yt-dlp failed:', err.message);
-                if (stderr) console.log('[extractor] yt-dlp stderr:', stderr.trim());
-                return reject(new Error('yt-dlp extraction failed'));
-            }
-            const urls = stdout.trim().split('\n').filter(Boolean);
-            if (urls.length > 0 && urls[0].startsWith('http')) {
-                resolve(urls[0]);
-            } else {
-                reject(new Error('yt-dlp returned no URL'));
-            }
-        });
-    });
-}
-
-// ── Metadata: oEmbed API ─────────────────────────────────────────
-
 async function fetchOembedMetadata(url) {
     try {
-        const cleanUrl = url.split('?')[0]; // Strip query params
+        const cleanUrl = url.split('?')[0];
         const res = await axios.get(
             `https://www.instagram.com/api/v1/oembed/?url=${encodeURIComponent(cleanUrl)}`,
             { timeout: 5000 }
@@ -240,44 +230,33 @@ async function fetchOembedMetadata(url) {
     }
 }
 
-// ── Main Extractor ───────────────────────────────────────────────
-
-/**
- * Extract video URL and metadata from a public Instagram Reel.
- * @param {string} url — normalized Instagram Reel URL
- */
-async function extractReelData(url) {
-    // 1. Fetch metadata via oEmbed (fast, reliable, runs in parallel)
+async function extractInstagram(url) {
     const metadataPromise = fetchOembedMetadata(url);
 
-    // 2. Try Cheerio HTML extraction first (fastest, no external deps)
     let videoUrl = null;
     try {
         videoUrl = await tryCheerioExtraction(url);
-        if (videoUrl) console.log('[extractor] ✅ Cheerio extraction succeeded');
+        if (videoUrl) console.log('[extractor] ✅ Instagram Cheerio extraction succeeded');
     } catch (err) {
-        // 404/403 errors should propagate immediately
         if (err.message.includes('not found') || err.message.includes('private')) throw err;
     }
 
-    // 3. Try embed page extraction (less protected than main page)
     if (!videoUrl) {
         try {
             videoUrl = await tryEmbedExtraction(url);
-            if (videoUrl) console.log('[extractor] ✅ Embed extraction succeeded');
+            if (videoUrl) console.log('[extractor] ✅ Instagram embed extraction succeeded');
         } catch (err) {
             console.log('[extractor] Embed extraction failed:', err.message);
         }
     }
 
-    // 4. Fall back to yt-dlp if nothing else worked
     if (!videoUrl) {
         try {
-            console.log('[extractor] HTML strategies found no video data, falling back to yt-dlp...');
-            videoUrl = await extractWithYtDlp(url);
-            console.log('[extractor] ✅ yt-dlp extraction succeeded');
+            console.log('[extractor] Instagram HTML strategies failed, falling back to yt-dlp...');
+            videoUrl = await runYtDlp(url, ['--no-check-certificate']);
+            console.log('[extractor] ✅ Instagram yt-dlp extraction succeeded');
         } catch {
-            // All strategies failed
+            // all strategies failed
         }
     }
 
@@ -288,14 +267,141 @@ async function extractReelData(url) {
     }
 
     const metadata = await metadataPromise;
-
-    return {
-        videoUrl,
-        thumbnail: metadata.thumbnail,
-        caption: metadata.caption,
-        title: metadata.title,
-        author: metadata.author,
-    };
+    return { videoUrl, ...metadata };
 }
 
-module.exports = { extractReelData };
+// ═══════════════════════════════════════════════════════════════
+// TIKTOK — no-watermark via yt-dlp aweme API format
+// ═══════════════════════════════════════════════════════════════
+
+async function extractTikTok(url) {
+    console.log('[extractor] Extracting TikTok video (no-watermark):', url);
+
+    const extraArgs = [
+        '--no-check-certificate',
+        '--extractor-args', 'tiktok:api_hostname=api22-normal-c-useast2a.tiktokv.com',
+    ];
+
+    let videoUrl;
+    try {
+        // Prefer the play_addr (no-watermark) download URL
+        videoUrl = await runYtDlp(url, extraArgs);
+        console.log('[extractor] ✅ TikTok yt-dlp extraction succeeded');
+    } catch (err) {
+        throw new Error(`Could not extract TikTok video: ${err.message}`);
+    }
+
+    // Fetch basic metadata via yt-dlp JSON
+    let metadata = { title: 'TikTok Video', caption: null, thumbnail: null, author: null };
+    try {
+        const json = await runYtDlpJson(url, extraArgs);
+        metadata = {
+            title: json.title || json.description || 'TikTok Video',
+            caption: json.description || null,
+            thumbnail: json.thumbnail || null,
+            author: json.uploader || json.creator || null,
+        };
+    } catch {
+        // metadata is optional
+    }
+
+    return { videoUrl, ...metadata };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FACEBOOK
+// ═══════════════════════════════════════════════════════════════
+
+async function extractFacebook(url) {
+    console.log('[extractor] Extracting Facebook video:', url);
+
+    const extraArgs = ['--no-check-certificate'];
+
+    let videoUrl;
+    try {
+        videoUrl = await runYtDlp(url, extraArgs);
+        console.log('[extractor] ✅ Facebook yt-dlp extraction succeeded');
+    } catch (err) {
+        throw new Error(`Could not extract Facebook video: ${err.message}`);
+    }
+
+    let metadata = { title: 'Facebook Video', caption: null, thumbnail: null, author: null };
+    try {
+        const json = await runYtDlpJson(url, extraArgs);
+        metadata = {
+            title: json.title || 'Facebook Video',
+            caption: json.description || null,
+            thumbnail: json.thumbnail || null,
+            author: json.uploader || null,
+        };
+    } catch {
+        // metadata is optional
+    }
+
+    return { videoUrl, ...metadata };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// YOUTUBE SHORTS
+// ═══════════════════════════════════════════════════════════════
+
+async function extractYouTube(url) {
+    console.log('[extractor] Extracting YouTube video:', url);
+
+    const extraArgs = ['--no-check-certificate'];
+
+    let videoUrl;
+    try {
+        videoUrl = await runYtDlp(url, extraArgs);
+        console.log('[extractor] ✅ YouTube yt-dlp extraction succeeded');
+    } catch (err) {
+        throw new Error(`Could not extract YouTube video: ${err.message}`);
+    }
+
+    let metadata = { title: 'YouTube Short', caption: null, thumbnail: null, author: null };
+    try {
+        const json = await runYtDlpJson(url, extraArgs);
+        metadata = {
+            title: json.title || 'YouTube Short',
+            caption: json.description || null,
+            thumbnail: json.thumbnail || null,
+            author: json.uploader || json.channel || null,
+        };
+    } catch {
+        // metadata is optional
+    }
+
+    return { videoUrl, ...metadata };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Platform Router
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Extract video URL and metadata from any supported platform.
+ * @param {string} url       — Normalised URL
+ * @param {string} platform  — 'instagram' | 'tiktok' | 'facebook' | 'youtube'
+ * @returns {Promise<{ videoUrl, thumbnail, caption, title, author }>}
+ */
+async function extractVideoData(url, platform) {
+    switch (platform) {
+        case 'instagram':
+            return extractInstagram(url);
+        case 'tiktok':
+            return extractTikTok(url);
+        case 'facebook':
+            return extractFacebook(url);
+        case 'youtube':
+            return extractYouTube(url);
+        default:
+            throw new Error(`Unknown platform: ${platform}`);
+    }
+}
+
+// Keep legacy export name for backward compat
+async function extractReelData(url) {
+    return extractVideoData(url, 'instagram');
+}
+
+module.exports = { extractVideoData, extractReelData };

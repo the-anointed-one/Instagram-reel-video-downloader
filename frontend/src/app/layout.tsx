@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import Script from 'next/script';
+import Link from 'next/link';
 import './globals.css';
 
 const inter = Inter({
@@ -18,38 +19,41 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
     metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://instagram-reel-downloader.byteoasis.ng'),
     title: {
-        default: 'Instagram Reel Downloader — Download Reels Video Free | ReelFetch',
+        default: 'ReelFetch | Instagram, TikTok, Facebook & YouTube Downloader',
         template: '%s | ReelFetch',
     },
     description:
-        'Instagram Reel Downloader — download reels instantly. Free online reels video download tool. Save Instagram Reels, download IG Reels with audio. No app needed, fast & free.',
+        'Free online video downloader for Instagram Reels, TikTok videos, Facebook Reels and YouTube Shorts. No app, no login, instant MP4 download. No watermark on TikTok.',
     keywords: [
         'instagram reel downloader',
         'download reels',
         'save instagram reels',
         'reels video download',
         'download ig reels',
-        'download reels from instagram',
-        'instagram reels download app',
-        'instagram reels video downloader',
-        'reels download',
+        'tiktok downloader no watermark',
+        'download tiktok without watermark',
+        'tiktok video downloader',
+        'facebook video downloader',
+        'facebook reel downloader',
+        'youtube shorts downloader',
+        'download youtube shorts',
+        'save tiktok to camera roll',
         'download instagram reels with audio',
-        'download a reel from instagram',
         'reelfetch',
     ],
     openGraph: {
-        title: 'Instagram Reel Downloader — Download Reels Video Free',
+        title: 'ReelFetch — Download Videos From Any Platform Free',
         description:
-            'Download Instagram Reels instantly. Free reels video download — no app, no login. Save Instagram Reels to your device.',
+            'Paste any Instagram, TikTok, Facebook or YouTube Shorts URL and download as MP4 instantly. Free, no login, no watermark.',
         type: 'website',
         siteName: 'ReelFetch',
         locale: 'en_US',
     },
     twitter: {
         card: 'summary_large_image',
-        title: 'Instagram Reel Downloader — Download Reels Free | ReelFetch',
+        title: 'ReelFetch — Free Video Downloader for Instagram, TikTok, Facebook & YouTube',
         description:
-            'Download Instagram Reels instantly — free reels video download, no login required.',
+            'Free online video downloader for Instagram Reels, TikTok videos, Facebook Reels and YouTube Shorts. No app, no login, no watermark.',
     },
     robots: {
         index: true,
@@ -79,6 +83,23 @@ export default function RootLayout({
         <html lang="en" className={`dark ${inter.variable}`}>
             <body className={inter.className}>
                 {children}
+
+                {/* ByteOasis footer branding + platform summary — injected at layout level */}
+                <div className="border-t border-white/5 py-4 text-center text-slate-600 text-xs space-y-1">
+                    <p>ReelFetch supports Instagram, TikTok, Facebook and YouTube Shorts.</p>
+                    <p>
+                        ReelFetch is a free tool by{' '}
+                        <Link
+                            href="https://byteoasis.ng"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-slate-500 hover:text-slate-400 underline underline-offset-2 transition-colors"
+                        >
+                            ByteOasis
+                        </Link>
+                    </p>
+                </div>
+
                 <Script
                     src="https://www.googletagmanager.com/gtag/js?id=G-HBLHFY2YLR"
                     strategy="lazyOnload"

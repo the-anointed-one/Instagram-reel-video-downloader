@@ -5,11 +5,12 @@
  *
  * POST /api/download
  * Orchestrates: validate → cache check → extract → cache store → respond
+ * Supports: Instagram, TikTok, Facebook, YouTube
  */
 
 const express = require('express');
 const { validateReelUrl } = require('../utils/validateUrl');
-const { extractReelData } = require('../services/extractor');
+const { extractVideoData } = require('../services/extractor');
 const cache = require('../services/cache');
 
 const router = express.Router();
@@ -23,29 +24,29 @@ router.post('/download', async (req, res) => {
         return res.status(400).json({ success: false, error: validation.error });
     }
 
-    const { normalized, shortcode } = validation;
+    const { normalized, platform, id } = validation;
 
     // ── 2. Log IP (analytics) ──────────────────────────────────────
     const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip;
-    console.log(`[download] ${new Date().toISOString()} | IP: ${ip} | Reel: ${shortcode}`);
+    console.log(`[download] ${new Date().toISOString()} | IP: ${ip} | Platform: ${platform} | ID: ${id}`);
 
-    // ── 3. Check Redis cache ───────────────────────────────────────
-    const cached = await cache.get(shortcode);
+    // ── 3. Build cache key from platform + content id ──────────────
+    const cacheKey = `${platform}:${id}`;
+    const cached = await cache.get(cacheKey);
     if (cached) {
-        console.log(`[download] Cache HIT for ${shortcode}`);
-        return res.json({ success: true, cached: true, ...cached });
+        console.log(`[download] Cache HIT for ${cacheKey}`);
+        return res.json({ success: true, cached: true, platform, ...cached });
     }
 
-    console.log(`[download] Cache MISS for ${shortcode} — extracting...`);
+    console.log(`[download] Cache MISS for ${cacheKey} — extracting...`);
 
     // ── 4. Extract video data ──────────────────────────────────────
     let data;
     try {
-        data = await extractReelData(normalized);
+        data = await extractVideoData(normalized, platform);
     } catch (err) {
-        console.error(`[download] Extraction failed for ${shortcode}:`, err.message);
+        console.error(`[download] Extraction failed for ${cacheKey}:`, err.message);
 
-        // Map error messages to structured HTTP responses
         if (
             err.message.includes('private') ||
             err.message.includes('authentication') ||
@@ -56,7 +57,7 @@ router.post('/download', async (req, res) => {
         if (err.message.includes('not found') || err.message.includes('deleted')) {
             return res.status(404).json({ success: false, error: err.message });
         }
-        if (err.message.includes('timed out')) {
+        if (err.message.includes('timed out') || err.message.includes('timeout')) {
             return res.status(504).json({ success: false, error: err.message });
         }
 
@@ -64,10 +65,10 @@ router.post('/download', async (req, res) => {
     }
 
     // ── 5. Cache successful result (24h) ───────────────────────────
-    await cache.set(shortcode, data);
+    await cache.set(cacheKey, data);
 
     // ── 6. Return result ───────────────────────────────────────────
-    return res.json({ success: true, cached: false, ...data });
+    return res.json({ success: true, cached: false, platform, ...data });
 });
 
 module.exports = router;

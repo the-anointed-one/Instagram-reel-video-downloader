@@ -52,8 +52,10 @@ export default function HomeClient() {
                     {[
                         { icon: '⚡', label: 'Instant extraction' },
                         { icon: '🔒', label: 'No login needed' },
+                        { icon: '🚫', label: 'No watermark (TikTok)' },
+                        { icon: '📱', label: 'All platforms' },
+                        { icon: '🌐', label: 'Public videos only' },
                         { icon: '📦', label: '24-hour cache' },
-                        { icon: '🌐', label: 'Public Reels only' },
                     ].map(({ icon, label }) => (
                         <div
                             key={label}

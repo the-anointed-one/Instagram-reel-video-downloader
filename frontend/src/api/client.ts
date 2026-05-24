@@ -2,11 +2,13 @@ import axios from 'axios';
 
 const apiClient = axios.create({
     baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
-    timeout: 45000,
+    timeout: 60000,
     headers: {
         'Content-Type': 'application/json',
     },
 });
+
+export type Platform = 'instagram' | 'tiktok' | 'facebook' | 'youtube';
 
 export interface DownloadResponse {
     success: boolean;
@@ -14,13 +16,20 @@ export interface DownloadResponse {
     thumbnail?: string | null;
     caption?: string | null;
     title?: string;
+    author?: string | null;
     cached?: boolean;
+    platform?: Platform;
     error?: string;
 }
 
-export async function downloadReel(url: string): Promise<DownloadResponse> {
+export async function downloadVideo(url: string): Promise<DownloadResponse> {
     const { data } = await apiClient.post<DownloadResponse>('/api/download', { url });
     return data;
+}
+
+/** @deprecated Use downloadVideo instead */
+export async function downloadReel(url: string): Promise<DownloadResponse> {
+    return downloadVideo(url);
 }
 
 export default apiClient;

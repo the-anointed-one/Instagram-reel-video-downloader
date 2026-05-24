@@ -1,35 +1,71 @@
 import Link from 'next/link';
 import HomeClient from '@/components/HomeClient';
 import { WebAppJsonLd, FaqJsonLd } from '@/components/JsonLd';
+import { getAllPosts } from '@/lib/blog';
 
 const faqs = [
     {
         question: 'How do I download an Instagram Reel?',
-        answer: 'Copy the Reel URL from Instagram, paste it into the input field on ReelFetch, and click "Fetch Reel". You\'ll instantly get a direct MP4 download link.',
+        answer: 'Copy the Reel URL from Instagram, paste it into the input field on ReelFetch, and click Download. You\'ll instantly get a direct MP4 download link.',
+    },
+    {
+        question: 'Can I download TikTok videos without watermark?',
+        answer: 'Yes! ReelFetch now supports TikTok. Switch to the TikTok tab, paste the video URL, and download a clean MP4 with no watermark.',
+    },
+    {
+        question: 'Does ReelFetch support Facebook and YouTube?',
+        answer: 'Yes. Use the platform tabs to switch between Instagram, TikTok, Facebook, and YouTube Shorts. ReelFetch handles all four.',
     },
     {
         question: 'Is ReelFetch free to use?',
         answer: 'Yes, ReelFetch is completely free. There are no hidden charges, no subscriptions, and no sign-up required.',
     },
     {
-        question: 'Do I need to log in to my Instagram account?',
-        answer: 'No. ReelFetch only processes publicly accessible Reels. You never need to enter your Instagram credentials.',
+        question: 'Do I need to log in to my account?',
+        answer: 'No. ReelFetch only processes publicly accessible content. You never need to enter any account credentials.',
     },
     {
         question: 'Can I download private Instagram Reels?',
-        answer: 'No. ReelFetch only works with publicly accessible Reels. Private accounts and restricted content cannot be processed.',
+        answer: 'No. ReelFetch only works with publicly accessible content. Private accounts and restricted content cannot be processed.',
     },
     {
         question: 'Does ReelFetch store the downloaded videos?',
-        answer: 'No. ReelFetch never downloads or stores any video files on its servers. It only extracts the direct CDN link from Instagram and passes it to your browser.',
+        answer: 'No. ReelFetch never downloads or stores any video files on its servers. It only extracts the direct CDN link and passes it to your browser.',
     },
     {
-        question: 'Is it legal to download Instagram Reels?',
+        question: 'Is it legal to download videos?',
         answer: 'Downloading publicly available content for personal use is generally allowed, but you should always respect the original creator\'s rights. Never re-upload or monetize content you don\'t own.',
+    },
+    {
+        question: 'Can I download TikTok videos without watermark?',
+        answer: 'Yes. ReelFetch removes the TikTok watermark automatically. Paste your TikTok URL and download a clean MP4 with no watermark and full audio.',
+    },
+    {
+        question: 'Does ReelFetch support Facebook videos?',
+        answer: 'Yes. ReelFetch supports Facebook Reels and Facebook videos. Paste any public Facebook video URL and download it instantly as MP4.',
+    },
+    {
+        question: 'Can I download YouTube Shorts?',
+        answer: 'Yes. Paste any YouTube Shorts URL into ReelFetch and download it as an MP4 file. Works on mobile and desktop.',
+    },
+    {
+        question: 'Which platforms does ReelFetch support?',
+        answer: 'ReelFetch currently supports Instagram Reels, TikTok videos, Facebook videos and Reels, and YouTube Shorts. More platforms coming soon.',
     },
 ];
 
-export default function HomePage() {
+// Platform badges for the hero
+const PLATFORM_PILLS = [
+    { label: 'Instagram', color: 'from-pink-500 to-purple-600', emoji: '📸' },
+    { label: 'TikTok', color: 'from-slate-700 to-teal-700', emoji: '🎵' },
+    { label: 'Facebook', color: 'from-blue-600 to-blue-800', emoji: '👍' },
+    { label: 'YouTube', color: 'from-red-600 to-red-800', emoji: '▶️' },
+];
+
+export default async function HomePage() {
+    // Server-side: fetch latest 3 blog posts
+    const latestPosts = getAllPosts().slice(0, 3);
+
     return (
         <div className="min-h-screen flex flex-col">
             {/* JSON-LD Structured Data */}
@@ -70,22 +106,97 @@ export default function HomePage() {
                     <div className="text-center space-y-4 animate-fade-in">
                         <div className="inline-flex items-center gap-2 bg-brand-600/10 border border-brand-500/20 text-brand-400 text-xs font-semibold px-3 py-1.5 rounded-full uppercase tracking-wider">
                             <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse" />
-                            Free &amp; No Login Required
+                            4 Platforms · Free · No Login · No Watermark
                         </div>
+
                         <h1 className="text-4xl sm:text-5xl font-extrabold text-white leading-tight tracking-tight">
-                            Instagram Reel Downloader<br />
+                            Download Videos From<br />
                             <span className="bg-gradient-to-r from-brand-400 to-purple-400 bg-clip-text text-transparent">
-                                Download Reels Instantly
+                                Any Platform
                             </span>
                         </h1>
-                        <p className="text-slate-400 text-base sm:text-lg max-w-md mx-auto leading-relaxed">
-                            Free reels video download tool — paste any Reel URL and save Instagram Reels as MP4 in seconds. No app needed.
+
+                        {/* Platform sub-heading */}
+                        <p className="text-slate-500 text-sm font-semibold tracking-widest uppercase">
+                            Instagram · TikTok · Facebook · YouTube Shorts
                         </p>
+
+                        <p className="text-slate-400 text-base sm:text-lg max-w-md mx-auto leading-relaxed">
+                            Free video downloader for Instagram Reels, TikTok videos, Facebook videos and YouTube Shorts. Paste any URL and download as MP4 instantly. No app needed. No login required.
+                        </p>
+
+                        {/* Platform gradient pills */}
+                        <div className="flex flex-wrap justify-center gap-2 pt-1">
+                            {PLATFORM_PILLS.map(({ label, color, emoji }) => (
+                                <span
+                                    key={label}
+                                    className={`inline-flex items-center gap-1.5 bg-gradient-to-r ${color} text-white text-xs font-semibold px-3 py-1 rounded-full opacity-90`}
+                                >
+                                    <span>{emoji}</span>
+                                    {label}
+                                </span>
+                            ))}
+                        </div>
                     </div>
 
                     {/* Interactive client section */}
                     <HomeClient />
                 </div>
+
+                {/* ── Tips & Guides Blog Cards ──────────────────────────────── */}
+                {latestPosts.length > 0 && (
+                    <section className="w-full max-w-5xl mt-20" aria-label="Tips and Guides">
+                        <h2 className="text-2xl font-bold text-white text-center mb-8">
+                            Tips &amp; Guides
+                        </h2>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                            {latestPosts.map((post) => {
+                                const excerpt =
+                                    post.description?.slice(0, 120) ||
+                                    post.content.replace(/[#*`\[\]]/g, '').slice(0, 120);
+                                return (
+                                    <Link
+                                        key={post.slug}
+                                        href={`/blog/${post.slug}`}
+                                        className="group glass-card p-6 flex flex-col gap-3 hover:border-brand-500/30 hover:bg-white/[0.04] transition-all duration-200"
+                                        aria-label={`Read: ${post.title}`}
+                                    >
+                                        {/* Tag pill */}
+                                        {post.tags?.[0] && (
+                                            <span className="self-start text-[10px] font-semibold uppercase tracking-wider text-brand-400 bg-brand-500/10 border border-brand-500/20 px-2 py-0.5 rounded-full">
+                                                {post.tags[0]}
+                                            </span>
+                                        )}
+
+                                        {/* Title */}
+                                        <h3 className="text-sm font-semibold text-slate-200 group-hover:text-white leading-snug transition-colors">
+                                            {post.title}
+                                        </h3>
+
+                                        {/* Excerpt */}
+                                        <p className="text-xs text-slate-500 leading-relaxed flex-1">
+                                            {excerpt.trim()}
+                                            {excerpt.length >= 120 ? '…' : ''}
+                                        </p>
+
+                                        {/* Footer */}
+                                        <div className="flex items-center justify-between mt-auto pt-2 border-t border-white/5">
+                                            <span className="text-[10px] text-slate-600">{post.readTime}</span>
+                                            <span className="text-xs text-brand-400 group-hover:text-brand-300 font-medium transition-colors">
+                                                Read more →
+                                            </span>
+                                        </div>
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                        <p className="text-center mt-6">
+                            <Link href="/blog" className="text-sm text-slate-500 hover:text-brand-400 transition-colors">
+                                View all guides →
+                            </Link>
+                        </p>
+                    </section>
+                )}
 
                 {/* ── FAQ Section ──────────────────────────────────────────── */}
                 <section className="w-full max-w-2xl mt-20">
@@ -122,27 +233,28 @@ export default function HomePage() {
                 <section className="w-full max-w-2xl mt-16">
                     <div className="glass-card p-8 space-y-4">
                         <h2 className="text-xl font-bold text-white">
-                            The Best Way to Download Reels From Instagram
+                            The Best Way to Download Videos From Any Platform
                         </h2>
                         <p className="text-sm text-slate-400 leading-relaxed">
-                            ReelFetch is a free <strong className="text-slate-300">Instagram Reel Downloader</strong> built for speed and privacy.
-                            Just paste any public Reel URL to <strong className="text-slate-300">download reels</strong> as MP4 files — no app install,
-                            no account login, no watermarks. Whether you want to <strong className="text-slate-300">save Instagram Reels</strong> for
-                            offline viewing or back up your own content, ReelFetch handles it in seconds.
+                            ReelFetch is a free multi-platform video downloader supporting <strong className="text-slate-300">Instagram Reels</strong>,{' '}
+                            <strong className="text-slate-300">TikTok videos</strong> (no watermark),{' '}
+                            <strong className="text-slate-300">Facebook videos and Reels</strong>, and{' '}
+                            <strong className="text-slate-300">YouTube Shorts</strong>.
+                            Just paste any public video URL and download it as an MP4 file — no app install, no account login, no watermarks.
                         </p>
                         <p className="text-sm text-slate-400 leading-relaxed">
-                            Unlike other tools, our <strong className="text-slate-300">reels video download</strong> engine extracts the direct CDN link
-                            and streams it straight to your browser. You can <strong className="text-slate-300">download IG Reels</strong> with
-                            full audio quality on any device — iPhone, Android, desktop, or tablet.
-                            Need to <strong className="text-slate-300">download Instagram Reels with audio</strong>?
-                            ReelFetch always preserves the original soundtrack.
+                            Whether you want to <strong className="text-slate-300">save Instagram Reels to camera roll</strong>,{' '}
+                            <strong className="text-slate-300">download TikTok without watermark</strong>, or grab a{' '}
+                            <strong className="text-slate-300">Facebook reel downloader</strong> link,
+                            ReelFetch handles it in seconds on any device — iPhone, Android, desktop, or tablet.
                         </p>
                         <p className="text-sm text-slate-400 leading-relaxed">
-                            Looking for an <strong className="text-slate-300">Instagram Reels download app</strong>? You don&apos;t need one —
-                            ReelFetch works directly in your browser. Check out our{' '}
+                            Check out our{' '}
                             <Link href="/blog/how-to-download-instagram-reels" className="text-brand-400 underline underline-offset-2 hover:text-brand-300">step-by-step guide</Link>,{' '}
-                            learn how to <Link href="/blog/download-instagram-reels-with-music-audio" className="text-brand-400 underline underline-offset-2 hover:text-brand-300">download Reels with music</Link>,
-                            or browse our <Link href="/blog" className="text-brand-400 underline underline-offset-2 hover:text-brand-300">blog</Link> for more tips.
+                            learn{' '}
+                            <Link href="/blog/how-to-save-instagram-reels-to-camera-roll" className="text-brand-400 underline underline-offset-2 hover:text-brand-300">how to save Reels to camera roll</Link>,
+                            or explore our{' '}
+                            <Link href="/blog" className="text-brand-400 underline underline-offset-2 hover:text-brand-300">tips &amp; guides blog</Link>.
                         </p>
                     </div>
                 </section>
@@ -151,13 +263,13 @@ export default function HomePage() {
             {/* ── Footer ──────────────────────────────────────────────────── */}
             <footer className="border-t border-white/5 py-8 text-center text-slate-600 text-sm space-y-1">
                 <p>
-                    ReelFetch only processes publicly accessible Instagram Reels.{' '}
+                    ReelFetch only processes publicly accessible content.{' '}
                     <Link href="/terms" className="text-slate-500 hover:text-slate-400 underline underline-offset-2">
                         Terms &amp; DMCA
                     </Link>
                 </p>
                 <p className="text-slate-700">
-                    &copy; {new Date().getFullYear()} ReelFetch. Not affiliated with Instagram or Meta.
+                    &copy; {new Date().getFullYear()} ReelFetch. Not affiliated with Instagram, TikTok, Meta, or Google.
                 </p>
             </footer>
         </div>

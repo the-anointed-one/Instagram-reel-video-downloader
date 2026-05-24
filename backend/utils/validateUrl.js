@@ -3,16 +3,113 @@
 /**
  * backend/utils/validateUrl.js
  *
- * Validates that a URL is a legitimate public Instagram Reel URL.
- * Also guards against SSRF and non-Instagram domains.
+ * Validates and detects platform from a video URL.
+ * Supports: Instagram Reels, TikTok, Facebook, YouTube Shorts.
+ * Guards against SSRF and unsupported domains.
  */
 
-const INSTAGRAM_REEL_PATTERN = /^https:\/\/(www\.)?instagram\.com\/reel\/[A-Za-z0-9_-]+\/?(\?.*)?$/;
+// ── Platform URL patterns ─────────────────────────────────────────
+
+const PLATFORM_PATTERNS = {
+    instagram: {
+        hostnames: ['www.instagram.com', 'instagram.com'],
+        pathPattern: /^\/(reel|p)\/[A-Za-z0-9_-]+\/?/,
+        errorHint: 'e.g. https://www.instagram.com/reel/ABC123/',
+    },
+    tiktok: {
+        hostnames: ['www.tiktok.com', 'tiktok.com', 'vm.tiktok.com', 'vt.tiktok.com'],
+        pathPattern: /^\/@?[^/]+\/video\/\d+|^\/t\/[A-Za-z0-9]+/,
+        errorHint: 'e.g. https://www.tiktok.com/@user/video/123456789',
+    },
+    facebook: {
+        hostnames: [
+            'www.facebook.com', 'facebook.com',
+            'www.fb.watch', 'fb.watch',
+            'm.facebook.com',
+        ],
+        pathPattern: /^\/(reel\/|watch\/|[^/]+\/videos\/|\?v=|share\/r\/|share\/v\/)/,
+        errorHint: 'e.g. https://www.facebook.com/reel/123456 or fb.watch/...',
+    },
+    youtube: {
+        hostnames: [
+            'www.youtube.com', 'youtube.com',
+            'm.youtube.com', 'youtu.be',
+        ],
+        pathPattern: /^\/(shorts\/[A-Za-z0-9_-]+|watch\?|[A-Za-z0-9_-]{11}$)/,
+        errorHint: 'e.g. https://www.youtube.com/shorts/ABC123',
+    },
+};
+
+// ── SSRF blocklist ────────────────────────────────────────────────
+
+const BLOCKED_HOSTNAME_PATTERNS = [
+    /^localhost$/i,
+    /^127\./,
+    /^10\./,
+    /^172\.(1[6-9]|2[0-9]|3[0-1])\./,
+    /^192\.168\./,
+    /^::1$/,
+    /^0\.0\.0\.0$/,
+    /^169\.254\./,       // link-local
+    /^[^.]+$/,           // bare hostnames (no TLD)
+];
+
+// ── Helpers ───────────────────────────────────────────────────────
+
+function detectPlatform(hostname, pathname) {
+    for (const [platform, config] of Object.entries(PLATFORM_PATTERNS)) {
+        if (config.hostnames.includes(hostname)) {
+            // For YouTube, also allow bare youtu.be IDs
+            if (platform === 'youtube' && hostname === 'youtu.be') return platform;
+            if (config.pathPattern.test(pathname)) return platform;
+            // Facebook: also match ?v= query param URLs
+            if (platform === 'facebook') return platform;
+        }
+    }
+    return null;
+}
+
+function normalizePlatformUrl(platform, parsed) {
+    switch (platform) {
+        case 'instagram': {
+            const m = parsed.pathname.match(/\/(reel|p)\/([A-Za-z0-9_-]+)/);
+            if (!m) return null;
+            // Always normalise to /reel/ form
+            return {
+                normalized: `https://www.instagram.com/reel/${m[2]}/`,
+                id: m[2],
+            };
+        }
+        case 'tiktok': {
+            // Preserve original URL — yt-dlp handles redirects
+            return {
+                normalized: parsed.href,
+                id: parsed.pathname.replace(/\//g, '_').replace(/^_/, '') || 'tiktok',
+            };
+        }
+        case 'facebook': {
+            return {
+                normalized: parsed.href,
+                id: parsed.pathname.replace(/\//g, '_').replace(/^_/, '') || 'fb',
+            };
+        }
+        case 'youtube': {
+            return {
+                normalized: parsed.href,
+                id: parsed.pathname.split('/').pop() || 'yt',
+            };
+        }
+        default:
+            return null;
+    }
+}
+
+// ── Main export ───────────────────────────────────────────────────
 
 /**
- * Validate an Instagram Reel URL.
+ * Validate a video URL from any supported platform.
  * @param {string} url
- * @returns {{ valid: boolean, error?: string, normalized?: string }}
+ * @returns {{ valid: boolean, error?: string, normalized?: string, platform?: string, id?: string }}
  */
 function validateReelUrl(url) {
     if (!url || typeof url !== 'string') {
@@ -21,12 +118,10 @@ function validateReelUrl(url) {
 
     const trimmed = url.trim();
 
-    // Must start with https
-    if (!trimmed.startsWith('https://')) {
-        return { valid: false, error: 'Only HTTPS Instagram Reel URLs are accepted.' };
+    if (!trimmed.startsWith('https://') && !trimmed.startsWith('http://')) {
+        return { valid: false, error: 'Only HTTP/HTTPS URLs are accepted.' };
     }
 
-    // Must be instagram.com (block SSRF / internal hosts)
     let parsed;
     try {
         parsed = new URL(trimmed);
@@ -36,39 +131,31 @@ function validateReelUrl(url) {
 
     const hostname = parsed.hostname.toLowerCase();
 
-    // Block non-Instagram domains (SSRF guard)
-    if (hostname !== 'www.instagram.com' && hostname !== 'instagram.com') {
-        return { valid: false, error: 'Only Instagram URLs are accepted.' };
-    }
-
-    // Block private/internal IPs (belt-and-suspenders SSRF guard)
-    const blockedPatterns = [
-        /^localhost$/i,
-        /^127\./,
-        /^10\./,
-        /^172\.(1[6-9]|2[0-9]|3[0-1])\./,
-        /^192\.168\./,
-        /^::1$/,
-        /^0\.0\.0\.0$/,
-    ];
-    if (blockedPatterns.some((p) => p.test(hostname))) {
+    // SSRF guard
+    if (BLOCKED_HOSTNAME_PATTERNS.some((p) => p.test(hostname))) {
         return { valid: false, error: 'Invalid host.' };
     }
 
-    // Must match Reel URL pattern
-    if (!INSTAGRAM_REEL_PATTERN.test(trimmed)) {
+    const platform = detectPlatform(hostname, parsed.pathname);
+
+    if (!platform) {
+        const supported = Object.keys(PLATFORM_PATTERNS).join(', ');
         return {
             valid: false,
-            error: 'URL must be a public Instagram Reel (e.g. https://www.instagram.com/reel/ABC123/).',
+            error: `Unsupported platform. Supported: ${supported}.`,
         };
     }
 
-    // Normalize: strip query params, ensure trailing slash
-    const shortcodeMatch = trimmed.match(/\/reel\/([A-Za-z0-9_-]+)/);
-    const shortcode = shortcodeMatch ? shortcodeMatch[1] : null;
-    const normalized = `https://www.instagram.com/reel/${shortcode}/`;
+    const result = normalizePlatformUrl(platform, parsed);
+    if (!result) {
+        return {
+            valid: false,
+            error: `Could not parse ${platform} URL. ${PLATFORM_PATTERNS[platform].errorHint}`,
+        };
+    }
 
-    return { valid: true, normalized, shortcode };
+    return { valid: true, platform, normalized: result.normalized, id: result.id };
 }
 
+// Keep legacy export name so existing callers aren't broken
 module.exports = { validateReelUrl };
