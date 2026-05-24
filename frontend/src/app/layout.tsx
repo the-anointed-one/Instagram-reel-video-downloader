@@ -69,6 +69,15 @@ export const metadata: Metadata = {
     alternates: {
         canonical: '/',
     },
+    manifest: '/manifest.json',
+    appleWebApp: {
+        capable: true,
+        statusBarStyle: 'black-translucent',
+        title: 'ReelFetch',
+    },
+    icons: {
+        apple: '/icons/icon-192.png',
+    },
     verification: {
         google: 'N1XsTzzPSMF2oIIeXr46CtcU-RtFrZj1XW__6EaawBI',
     },
@@ -110,6 +119,24 @@ export default function RootLayout({
                         function gtag(){dataLayer.push(arguments);}
                         gtag('js', new Date());
                         gtag('config', 'G-HBLHFY2YLR');
+                    `}
+                </Script>
+
+                {/* Service Worker registration */}
+                <Script id="sw-register" strategy="lazyOnload">
+                    {`
+                        if ('serviceWorker' in navigator) {
+                            window.addEventListener('load', function() {
+                                navigator.serviceWorker
+                                    .register('/sw.js')
+                                    .then(function(reg) {
+                                        console.log('[ReelFetch] SW registered:', reg.scope);
+                                    })
+                                    .catch(function(err) {
+                                        console.log('[ReelFetch] SW registration failed:', err);
+                                    });
+                            });
+                        }
                     `}
                 </Script>
             </body>

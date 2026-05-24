@@ -5,6 +5,7 @@ import DownloadForm from '@/components/DownloadForm';
 import VideoPreview from '@/components/VideoPreview';
 import ErrorAlert from '@/components/ErrorAlert';
 import { DownloadResponse } from '@/api/client';
+import InstallPrompt from '@/components/InstallPrompt';
 
 export default function HomeClient() {
     const [result, setResult] = useState<DownloadResponse | null>(null);
@@ -27,6 +28,9 @@ export default function HomeClient() {
 
     return (
         <>
+            {/* PWA install banner */}
+            <InstallPrompt />
+
             {/* Form card */}
             <div className="glass-card p-6 animate-slide-up animation-pulse-glow space-y-5">
                 <DownloadForm
