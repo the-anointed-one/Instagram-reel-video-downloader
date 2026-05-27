@@ -13,7 +13,7 @@
 const PLATFORM_PATTERNS = {
     instagram: {
         hostnames: ['www.instagram.com', 'instagram.com'],
-        pathPattern: /^\/(reel|p)\/[A-Za-z0-9_-]+\/?/,
+        pathPattern: /^\/(reel|reels|p)\/[A-Za-z0-9_-]+\/?/,
         errorHint: 'e.g. https://www.instagram.com/reel/ABC123/',
     },
     tiktok: {
@@ -72,7 +72,7 @@ function detectPlatform(hostname, pathname) {
 function normalizePlatformUrl(platform, parsed) {
     switch (platform) {
         case 'instagram': {
-            const m = parsed.pathname.match(/\/(reel|p)\/([A-Za-z0-9_-]+)/);
+            const m = parsed.pathname.match(/\/(reel|reels|p)\/([A-Za-z0-9_-]+)/);
             if (!m) return null;
             // Always normalise to /reel/ form
             return {
