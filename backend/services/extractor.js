@@ -19,6 +19,9 @@ const { execFile } = require('child_process');
 // ── Config ───────────────────────────────────────────────────────
 const YTDLP_PATH = process.env.YTDLP_PATH || 'yt-dlp';
 const YTDLP_TIMEOUT = 45000; // 45s — TikTok can be slow
+// Optional: path to a Netscape-format cookies file (e.g. exported from browser)
+// Set YTDLP_COOKIES_FILE in .env to enable cookie auth for YouTube/etc.
+const YTDLP_COOKIES_FILE = process.env.YTDLP_COOKIES_FILE || null;
 
 const REQUEST_HEADERS = {
     'User-Agent':
@@ -54,32 +57,54 @@ function findVideoUrl(obj, depth = 0) {
     return null;
 }
 
+// ── Cookie Helper ────────────────────────────────────────────────
+function buildCookieArgs() {
+    if (YTDLP_COOKIES_FILE) {
+        return ['--cookies', YTDLP_COOKIES_FILE];
+    }
+    return [];
+}
+
 // ── yt-dlp Wrapper ───────────────────────────────────────────────
 
 /**
  * Run yt-dlp with given extra args and return the first video URL.
- * @param {string} url
- * @param {string[]} extraArgs
  */
-function runYtDlp(url, extraArgs = []) {
+function runYtDlp(url, extraArgs = [], attemptBrowserCookies = true) {
     return new Promise((resolve, reject) => {
-        const args = [
+        const baseArgs = [
             '--get-url',
             '--no-warnings',
             '--no-playlist',
             '--format', 'best[ext=mp4]/bestvideo[ext=mp4]+bestaudio/best',
-            ...extraArgs,
-            url,
         ];
+        
+        const cookieArgs = buildCookieArgs();
+        let args = [...baseArgs, ...cookieArgs, ...extraArgs, url];
 
         console.log(`[extractor] yt-dlp args: ${args.join(' ')}`);
 
         execFile(YTDLP_PATH, args, { timeout: YTDLP_TIMEOUT }, (err, stdout, stderr) => {
             if (err) {
+                // Fallback to browser cookies if no custom cookie file was set and we haven't tried yet
+                if (cookieArgs.length === 0 && attemptBrowserCookies) {
+                    console.log(`[extractor] Auth/Extract failed, retrying with --cookies-from-browser chrome for ${url}`);
+                    return runYtDlp(url, [...extraArgs, '--cookies-from-browser', 'chrome'], false)
+                        .then(resolve)
+                        .catch((fallbackErr) => {
+                            reject(new Error(
+                                `yt-dlp extraction failed: ${fallbackErr.message}\n\n` +
+                                `Fix: Export cookies to a file and set YTDLP_COOKIES_FILE=/path/to/cookies.txt in your .env. ` +
+                                `See https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp`
+                            ));
+                        });
+                }
+                
                 console.log('[extractor] yt-dlp error:', err.message);
                 if (stderr) console.log('[extractor] yt-dlp stderr:', stderr.trim().slice(0, 500));
                 return reject(new Error(`yt-dlp extraction failed: ${err.message}`));
             }
+            
             const urls = stdout.trim().split('\n').filter(Boolean);
             if (urls.length > 0 && urls[0].startsWith('http')) {
                 resolve(urls[0]);
@@ -94,10 +119,13 @@ function runYtDlp(url, extraArgs = []) {
 
 function runYtDlpJson(url, extraArgs = []) {
     return new Promise((resolve, reject) => {
+        const cookieArgs = buildCookieArgs();
+        // If we want a browser fallback for metadata, we could add it, but usually standard cookies are fine
         const args = [
             '--dump-json',
             '--no-warnings',
             '--no-playlist',
+            ...cookieArgs,
             ...extraArgs,
             url,
         ];
