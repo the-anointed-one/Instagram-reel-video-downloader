@@ -451,31 +451,59 @@ async function extractFacebook(url) {
 async function extractYouTube(url) {
     console.log('[extractor] Extracting YouTube video:', url);
 
-    // Use android client to bypass bot detection without cookies
-    const extraArgs = [
+    // Strategy 1: Try android client first (sometimes bypasses bot detection)
+    let videoUrl;
+    const androidArgs = [
         '--no-check-certificate',
         '--extractor-args', 'youtube:player_client=android'
     ];
 
-    let videoUrl;
     try {
-        videoUrl = await runYtDlp(url, extraArgs);
-        console.log('[extractor] ✅ YouTube yt-dlp extraction succeeded');
+        videoUrl = await runYtDlp(url, androidArgs);
+        console.log('[extractor] ✅ YouTube extraction succeeded (android client)');
     } catch (err) {
-        console.log('[extractor] YouTube yt-dlp failed:', err.message);
+        console.log('[extractor] Android client failed:', err.message);
     }
 
+    // Strategy 2: Try with web client + cookies if available
+    if (!videoUrl && YTDLP_COOKIES_FILE) {
+        try {
+            console.log('[extractor] Retrying YouTube with cookies...');
+            videoUrl = await runYtDlp(url, ['--no-check-certificate']);
+            console.log('[extractor] ✅ YouTube extraction succeeded (with cookies)');
+        } catch (err) {
+            console.log('[extractor] Web client with cookies failed:', err.message);
+        }
+    }
+
+    // Strategy 3: Try browser cookies fallback
+    if (!videoUrl && !YTDLP_COOKIES_FILE) {
+        try {
+            console.log('[extractor] Attempting browser cookies fallback...');
+            videoUrl = await runYtDlp(url, ['--cookies-from-browser', 'chrome']);
+            console.log('[extractor] ✅ YouTube extraction succeeded (browser cookies)');
+        } catch (err) {
+            console.log('[extractor] Browser cookies fallback failed:', err.message);
+        }
+    }
+
+    // Strategy 4: Fallback to Cobalt API
     if (!videoUrl) {
+        console.log('[extractor] yt-dlp failed, trying Cobalt API fallback...');
         videoUrl = await fetchFromCobalt(url);
+        if (videoUrl) console.log('[extractor] ✅ YouTube extraction succeeded (Cobalt API)');
     }
 
     if (!videoUrl) {
-        throw new Error(`Could not extract YouTube video.`);
+        throw new Error(
+            `Could not extract YouTube video. YouTube requires authentication due to bot detection. ` +
+            `Please set YTDLP_COOKIES_CONTENT or configure a Cobalt API fallback.`
+        );
     }
 
     let metadata = { title: 'YouTube Short', caption: null, thumbnail: null, author: null };
     try {
-        const json = await runYtDlpJson(url, extraArgs);
+        const json = await runYtDlpJson(url, androidArgs);
         metadata = {
             title: json.title || 'YouTube Short',
             caption: json.description || null,

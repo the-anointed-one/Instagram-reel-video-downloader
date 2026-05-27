@@ -33,3 +33,7 @@ npm-debug.log*
 
 # Playwright browser binaries (downloaded separately)
 **/ms-playwright/
+
+# Cookie files (sensitive data)
+.cookies.txt
+.cookies.b64.txt
