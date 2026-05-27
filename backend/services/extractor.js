@@ -25,6 +25,7 @@ const YTDLP_TIMEOUT = 45000; // 45s — TikTok can be slow
 // Optional: path to a Netscape-format cookies file (e.g. exported from browser)
 // Set YTDLP_COOKIES_FILE in .env to enable cookie auth for YouTube/etc.
 let YTDLP_COOKIES_FILE = process.env.YTDLP_COOKIES_FILE || null;
+const COBALT_API_URL = process.env.COBALT_API_URL || null;
 
 // For Vercel/Render, it's easier to paste the cookie file content as an environment variable:
 if (!YTDLP_COOKIES_FILE && process.env.YTDLP_COOKIES_CONTENT) {
@@ -158,6 +159,39 @@ function runYtDlpJson(url, extraArgs = []) {
             else reject(new Error('yt-dlp returned invalid JSON'));
         });
     });
+}
+
+// ── Cobalt API Fallback ──────────────────────────────────────────
+
+/**
+ * Fallback to a self-hosted or public Cobalt API instance if configured.
+ */
+async function fetchFromCobalt(url) {
+    if (!COBALT_API_URL) return null;
+    try {
+        console.log('[extractor] Attempting Cobalt API fallback for:', url);
+        const res = await axios.post(
+            COBALT_API_URL, 
+            { url },
+            {
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                timeout: 15000
+            }
+        );
+        
+        // Cobalt v11 returns { url: "..." } on success
+        if (res.data && res.data.url) {
+            console.log('[extractor] ✅ Cobalt API extraction succeeded');
+            return res.data.url;
+        }
+        return null;
+    } catch (err) {
+        console.log('[extractor] Cobalt fallback failed:', err.response?.data || err.message);
+        return null;
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -304,9 +338,13 @@ async function extractInstagram(url) {
             console.log('[extractor] Instagram HTML strategies failed, falling back to yt-dlp...');
             videoUrl = await runYtDlp(url, ['--no-check-certificate']);
             console.log('[extractor] ✅ Instagram yt-dlp extraction succeeded');
-        } catch {
-            // all strategies failed
+        } catch (err) {
+            console.log('[extractor] yt-dlp failed:', err.message);
         }
+    }
+
+    if (!videoUrl) {
+        videoUrl = await fetchFromCobalt(url);
     }
 
     if (!videoUrl) {
@@ -337,7 +375,15 @@ async function extractTikTok(url) {
         videoUrl = await runYtDlp(url, extraArgs);
         console.log('[extractor] ✅ TikTok yt-dlp extraction succeeded');
     } catch (err) {
-        throw new Error(`Could not extract TikTok video: ${err.message}`);
+        console.log('[extractor] TikTok yt-dlp failed:', err.message);
+    }
+
+    if (!videoUrl) {
+        videoUrl = await fetchFromCobalt(url);
+    }
+
+    if (!videoUrl) {
+        throw new Error(`Could not extract TikTok video.`);
     }
 
     // Fetch basic metadata via yt-dlp JSON
@@ -371,7 +417,15 @@ async function extractFacebook(url) {
         videoUrl = await runYtDlp(url, extraArgs);
         console.log('[extractor] ✅ Facebook yt-dlp extraction succeeded');
     } catch (err) {
-        throw new Error(`Could not extract Facebook video: ${err.message}`);
+        console.log('[extractor] Facebook yt-dlp failed:', err.message);
+    }
+
+    if (!videoUrl) {
+        videoUrl = await fetchFromCobalt(url);
+    }
+
+    if (!videoUrl) {
+        throw new Error(`Could not extract Facebook video.`);
     }
 
     let metadata = { title: 'Facebook Video', caption: null, thumbnail: null, author: null };
@@ -397,14 +451,26 @@ async function extractFacebook(url) {
 async function extractYouTube(url) {
     console.log('[extractor] Extracting YouTube video:', url);
 
-    const extraArgs = ['--no-check-certificate'];
+    // Use android client to bypass bot detection without cookies
+    const extraArgs = [
+        '--no-check-certificate',
+        '--extractor-args', 'youtube:player_client=android'
+    ];
 
     let videoUrl;
     try {
         videoUrl = await runYtDlp(url, extraArgs);
         console.log('[extractor] ✅ YouTube yt-dlp extraction succeeded');
     } catch (err) {
-        throw new Error(`Could not extract YouTube video: ${err.message}`);
+        console.log('[extractor] YouTube yt-dlp failed:', err.message);
+    }
+
+    if (!videoUrl) {
+        videoUrl = await fetchFromCobalt(url);
+    }
+
+    if (!videoUrl) {
+        throw new Error(`Could not extract YouTube video.`);
     }
 
     let metadata = { title: 'YouTube Short', caption: null, thumbnail: null, author: null };
