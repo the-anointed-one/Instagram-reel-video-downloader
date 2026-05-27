@@ -23,7 +23,7 @@ const PLATFORMS: PlatformConfig[] = [
         id: 'instagram',
         label: 'Instagram',
         placeholder: 'https://www.instagram.com/reel/ABC123/',
-        pattern: /https?:\/\/(www\.)?instagram\.com\/(reel|p)\/[A-Za-z0-9_-]+/,
+        pattern: /https?:\/\/(www\.)?instagram\.com\/(reel|reels|p)\/[A-Za-z0-9_-]+/,
         successMessage: 'Instagram Reel ready to download!',
         gradient: 'from-pink-500 via-fuchsia-500 to-purple-600',
         iconColor: 'text-pink-400',
