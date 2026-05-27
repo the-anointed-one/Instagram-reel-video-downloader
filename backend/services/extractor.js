@@ -15,13 +15,34 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
 const { execFile } = require('child_process');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 
 // ── Config ───────────────────────────────────────────────────────
 const YTDLP_PATH = process.env.YTDLP_PATH || 'yt-dlp';
 const YTDLP_TIMEOUT = 45000; // 45s — TikTok can be slow
 // Optional: path to a Netscape-format cookies file (e.g. exported from browser)
 // Set YTDLP_COOKIES_FILE in .env to enable cookie auth for YouTube/etc.
-const YTDLP_COOKIES_FILE = process.env.YTDLP_COOKIES_FILE || null;
+let YTDLP_COOKIES_FILE = process.env.YTDLP_COOKIES_FILE || null;
+
+// For Vercel/Render, it's easier to paste the cookie file content as an environment variable:
+if (!YTDLP_COOKIES_FILE && process.env.YTDLP_COOKIES_CONTENT) {
+    try {
+        YTDLP_COOKIES_FILE = path.join(os.tmpdir(), 'ytdlp_cookies.txt');
+        // Decode base64 if user encoded it, otherwise assume raw string
+        const content = process.env.YTDLP_COOKIES_CONTENT.trim();
+        const decodedContent = content.startsWith('base64:') 
+            ? Buffer.from(content.replace('base64:', ''), 'base64').toString('utf8')
+            : content;
+            
+        fs.writeFileSync(YTDLP_COOKIES_FILE, decodedContent, { encoding: 'utf8', mode: 0o600 });
+        console.log(`[extractor] Wrote cookies from YTDLP_COOKIES_CONTENT to ${YTDLP_COOKIES_FILE}`);
+    } catch (err) {
+        console.error('[extractor] Failed to write cookies file from ENV:', err.message);
+        YTDLP_COOKIES_FILE = null;
+    }
+}
 
 const REQUEST_HEADERS = {
     'User-Agent':
