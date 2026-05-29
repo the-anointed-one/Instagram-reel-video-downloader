@@ -35,7 +35,7 @@ const PLATFORM_PATTERNS = {
             'www.youtube.com', 'youtube.com',
             'm.youtube.com', 'youtu.be',
         ],
-        pathPattern: /^\/(shorts\/[A-Za-z0-9_-]+|watch\?|[A-Za-z0-9_-]{11}$)/,
+        pathPattern: /^\/(shorts\/[A-Za-z0-9_-]+|watch|[A-Za-z0-9_-]{11}$)/,
         errorHint: 'e.g. https://www.youtube.com/shorts/ABC123',
     },
 };
@@ -94,9 +94,13 @@ function normalizePlatformUrl(platform, parsed) {
             };
         }
         case 'youtube': {
+            let id = parsed.pathname.split('/').pop() || 'yt';
+            if (id === 'watch' && parsed.searchParams.has('v')) {
+                id = parsed.searchParams.get('v');
+            }
             return {
                 normalized: parsed.href,
-                id: parsed.pathname.split('/').pop() || 'yt',
+                id: id,
             };
         }
         default:
