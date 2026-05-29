@@ -584,6 +584,32 @@ async function extractAudioUrl(url, platform) {
     return { audioUrl, title, platform };
 }
 
+// ── Twitter/X ─────────────────────────────────────────────────────
+
+async function extractTwitter(url) {
+    let videoUrl;
+    try {
+        videoUrl = await runYtDlp(url);
+    } catch (err) {
+        throw new Error(`Could not extract Twitter video. ${err.message}`);
+    }
+
+    let metadata = {};
+    try {
+        const json = await runYtDlpJson(url);
+        metadata = {
+            title: json.title || 'Twitter Video',
+            caption: json.description || null,
+            thumbnail: json.thumbnail || null,
+            author: json.uploader || null,
+        };
+    } catch {
+        // metadata is optional
+    }
+
+    return { videoUrl, ...metadata };
+}
+
 // ═══════════════════════════════════════════════════════════════
 // Platform Router
 // ═══════════════════════════════════════════════════════════════
@@ -604,6 +630,8 @@ async function extractVideoData(url, platform) {
             return extractFacebook(url);
         case 'youtube':
             return extractYouTube(url);
+        case 'twitter':
+            return extractTwitter(url);
         default:
             throw new Error(`Unknown platform: ${platform}`);
     }

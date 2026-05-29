@@ -69,6 +69,49 @@ async function set(key, value, ttl = TTL_SECONDS) {
     }
 }
 
+let fallbackDailyCount = 0;
+let fallbackDailyDate = new Date().toISOString().split('T')[0];
+
+/**
+ * Increment the daily download counter.
+ * Uses a Redis key with today's date (YYYY-MM-DD).
+ */
+async function incrementDailyCounter() {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // In-memory fallback management
+    if (today !== fallbackDailyDate) {
+        fallbackDailyCount = 0;
+        fallbackDailyDate = today;
+    }
+    fallbackDailyCount++;
+
+    try {
+        const key = `${CACHE_PREFIX}stats:downloads:${today}`;
+        const count = await getClient().incr(key);
+        if (count === 1) {
+            await getClient().expire(key, 86400);
+        }
+        return count;
+    } catch (err) {
+        return fallbackDailyCount;
+    }
+}
+
+/**
+ * Get the current daily download count.
+ */
+async function getDailyCounter() {
+    const today = new Date().toISOString().split('T')[0];
+    try {
+        const key = `${CACHE_PREFIX}stats:downloads:${today}`;
+        const raw = await getClient().get(key);
+        return raw ? parseInt(raw, 10) : fallbackDailyCount;
+    } catch (err) {
+        return fallbackDailyCount;
+    }
+}
+
 /**
  * Connect Redis client explicitly (called at startup).
  */
@@ -80,4 +123,4 @@ async function connect() {
     }
 }
 
-module.exports = { get, set, connect };
+module.exports = { get, set, connect, incrementDailyCounter, getDailyCounter };

@@ -5,7 +5,7 @@ import DownloadForm from '@/components/DownloadForm';
 import VideoPreview from '@/components/VideoPreview';
 import AudioPreview from '@/components/AudioPreview';
 import ErrorAlert from '@/components/ErrorAlert';
-import { DownloadResponse, AudioResponse, Platform } from '@/api/client';
+import { DownloadResponse, AudioResponse, Platform, fetchStats } from '@/api/client';
 import InstallPrompt from '@/components/InstallPrompt';
 
 interface DownloadHistoryEntry {
@@ -33,8 +33,10 @@ export default function HomeClient() {
     const [audioResult, setAudioResult] = useState<AudioResponse | null>(null);
     const [error, setError] = useState<{ message: string; status?: number } | null>(null);
     const [history, setHistory] = useState<DownloadHistoryEntry[]>([]);
+    const [stats, setStats] = useState<{ downloadsToday: number } | null>(null);
 
     useEffect(() => {
+        fetchStats().then(setStats);
         if (typeof window === 'undefined') return;
         try {
             const stored = localStorage.getItem('reelfetch_history');
@@ -127,6 +129,15 @@ export default function HomeClient() {
                     <ErrorAlert message={error.message} statusCode={error.status} />
                 )}
             </div>
+
+            {/* Stats Counter */}
+            {stats && stats.downloadsToday > 0 && (
+                <div className="text-center animate-fade-in mt-6 mb-2">
+                    <p className="text-sm font-medium text-slate-400">
+                        🔥 <span className="text-white">{stats.downloadsToday.toLocaleString()}</span> videos downloaded today
+                    </p>
+                </div>
+            )}
 
             {/* Result card */}
             {result && (

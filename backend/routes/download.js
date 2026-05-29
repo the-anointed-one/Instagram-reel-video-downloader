@@ -35,6 +35,7 @@ router.post('/download', async (req, res) => {
     const cached = await cache.get(cacheKey);
     if (cached) {
         console.log(`[download] Cache HIT for ${cacheKey}`);
+        await cache.incrementDailyCounter();
         return res.json({ success: true, cached: true, platform, ...cached });
     }
 
@@ -66,6 +67,7 @@ router.post('/download', async (req, res) => {
 
     // ── 5. Cache successful result (24h) ───────────────────────────
     await cache.set(cacheKey, data);
+    await cache.incrementDailyCounter();
 
     // ── 6. Return result ───────────────────────────────────────────
     return res.json({ success: true, cached: false, platform, ...data });
@@ -106,6 +108,7 @@ router.post('/download/audio', async (req, res) => {
         return res.status(422).json({ success: false, error: err.message });
     }
 
+    await cache.incrementDailyCounter();
     return res.json({ success: true, ...data });
 });
 

@@ -1,7 +1,8 @@
-const CACHE_NAME = 'reelfetch-v1';
+const CACHE_NAME = 'reelfetch-v2';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
+  '/offline.html',
 ];
 
 self.addEventListener('install', (event) => {
@@ -44,9 +45,21 @@ self.addEventListener('fetch', (event) => {
         }
         return response;
       })
-      .catch(() => {
+      .catch(async () => {
         // Offline fallback — serve from cache if available
-        return caches.match(event.request);
+        const cachedResponse = await caches.match(event.request);
+        if (cachedResponse) return cachedResponse;
+
+        // If it's a navigation request and we're offline, show offline page
+        if (event.request.mode === 'navigate') {
+            const offlinePage = await caches.match('/offline.html');
+            if (offlinePage) return offlinePage;
+        }
+
+        return new Response('Network error occurred', {
+            status: 408,
+            headers: { 'Content-Type': 'text/plain' },
+        });
       })
   );
 });

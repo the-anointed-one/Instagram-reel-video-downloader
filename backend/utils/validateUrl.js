@@ -38,6 +38,11 @@ const PLATFORM_PATTERNS = {
         pathPattern: /^\/(shorts\/[A-Za-z0-9_-]+|watch|[A-Za-z0-9_-]{11}$)/,
         errorHint: 'e.g. https://www.youtube.com/shorts/ABC123',
     },
+    twitter: {
+        hostnames: ['twitter.com', 'x.com', 'www.twitter.com', 'www.x.com', 'm.twitter.com'],
+        pathPattern: /^\/[^/]+\/status\/\d+/,
+        errorHint: 'e.g. https://x.com/user/status/123456789',
+    },
 };
 
 // ── SSRF blocklist ────────────────────────────────────────────────
@@ -101,6 +106,14 @@ function normalizePlatformUrl(platform, parsed) {
             return {
                 normalized: parsed.href,
                 id: id,
+            };
+        }
+        case 'twitter': {
+            const m = parsed.pathname.match(/^\/[^/]+\/status\/(\d+)/);
+            if (!m) return null;
+            return {
+                normalized: parsed.href,
+                id: m[1],
             };
         }
         default:

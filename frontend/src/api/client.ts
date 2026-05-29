@@ -8,7 +8,7 @@ const apiClient = axios.create({
     },
 });
 
-export type Platform = 'instagram' | 'tiktok' | 'facebook' | 'youtube';
+export type Platform = 'instagram' | 'tiktok' | 'facebook' | 'youtube' | 'twitter';
 
 export interface DownloadResponse {
     success: boolean;
@@ -43,6 +43,19 @@ export async function extractAudio(url: string): Promise<AudioResponse> {
 /** @deprecated Use downloadVideo instead */
 export async function downloadReel(url: string): Promise<DownloadResponse> {
     return downloadVideo(url);
+}
+
+export interface StatsResponse {
+    downloadsToday: number;
+}
+
+export async function fetchStats(): Promise<StatsResponse> {
+    try {
+        const { data } = await apiClient.get<StatsResponse>('/api/stats');
+        return data;
+    } catch {
+        return { downloadsToday: 0 };
+    }
 }
 
 export default apiClient;

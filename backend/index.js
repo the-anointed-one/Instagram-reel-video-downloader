@@ -66,6 +66,11 @@ app.use('/api', rateLimiter);
 // ── Routes ───────────────────────────────────────────────────────
 app.use('/api', downloadRouter);
 
+app.get('/api/stats', async (req, res) => {
+    const downloadsToday = await cache.getDailyCounter();
+    res.json({ downloadsToday });
+});
+
 // ── 404 handler ───────────────────────────────────────────────────
 app.use((req, res) => {
     res.status(404).json({ success: false, error: 'Endpoint not found.' });
