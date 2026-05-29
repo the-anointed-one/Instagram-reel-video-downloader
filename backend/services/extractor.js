@@ -563,8 +563,8 @@ async function extractYouTube(url) {
 }
 
 async function extractAudioUrl(url, platform) {
-    const audioArgs = ['-x', '--audio-format', 'mp3', '--audio-quality', '0'];
-    const overrideArgs = ['-x', '--audio-format', 'mp3', '--audio-quality', '0', '--no-warnings', '--no-playlist'];
+    const audioArgs = ['--get-url', '--format', 'bestaudio[ext=m4a]/bestaudio/best'];
+    const overrideArgs = ['--get-url', '--format', 'bestaudio[ext=m4a]/bestaudio/best', '--no-warnings', '--no-playlist'];
 
     let audioUrl;
     try {

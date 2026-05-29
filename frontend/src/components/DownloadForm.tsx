@@ -328,13 +328,16 @@ export default function DownloadForm({ onResult, onAudioResult, onError, onReset
     return (
         <div className="space-y-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <button
-                    type="button"
-                    onClick={handleToggleBatch}
-                    className={`btn-secondary text-sm px-3 py-2 ${batchMode ? 'bg-white/10 text-white border-white/20' : ''}`}
-                >
-                    {batchMode ? 'Batch mode active' : 'Batch mode'}
-                </button>
+                <div className="flex flex-col items-start gap-1">
+                    <button
+                        type="button"
+                        onClick={handleToggleBatch}
+                        className={`btn-secondary text-sm px-3 py-2 ${batchMode ? 'bg-white/10 text-white border-white/20' : ''}`}
+                    >
+                        {batchMode ? 'Batch mode active' : 'Batch mode'}
+                    </button>
+                    <span className="text-[10px] text-slate-500 pl-1">Download multiple videos at once</span>
+                </div>
                 {batchMode && batchProgress && (
                     <p className="text-sm text-slate-400">Downloading {batchProgress.current} of {batchProgress.total}...</p>
                 )}
