@@ -22,6 +22,8 @@ const path = require('path');
 // ── Config ───────────────────────────────────────────────────────
 const YTDLP_PATH = process.env.YTDLP_PATH || 'yt-dlp';
 const YTDLP_TIMEOUT = 45000; // 45s — TikTok can be slow
+const YTDLP_PROXY = process.env.YTDLP_PROXY || null;
+console.log('[debug] YTDLP_PROXY:', process.env.YTDLP_PROXY);
 // Optional: path to a Netscape-format cookies file (e.g. exported from browser)
 // Set YTDLP_COOKIES_FILE in .env to enable cookie auth for YouTube/etc.
 let YTDLP_COOKIES_FILE = process.env.YTDLP_COOKIES_FILE || null;
@@ -31,19 +33,36 @@ const COBALT_API_URL = process.env.COBALT_API_URL || null;
 if (!YTDLP_COOKIES_FILE && process.env.YTDLP_COOKIES_CONTENT) {
     try {
         YTDLP_COOKIES_FILE = path.join(os.tmpdir(), 'ytdlp_cookies.txt');
-        // Decode base64 if user encoded it, otherwise assume raw string
-        const content = process.env.YTDLP_COOKIES_CONTENT.trim();
-        const decodedContent = content.startsWith('base64:') 
-            ? Buffer.from(content.replace('base64:', ''), 'base64').toString('utf8')
-            : content;
-            
-        fs.writeFileSync(YTDLP_COOKIES_FILE, decodedContent, { encoding: 'utf8', mode: 0o600 });
-        console.log(`[extractor] Wrote cookies from YTDLP_COOKIES_CONTENT to ${YTDLP_COOKIES_FILE}`);
+        const rawContent = process.env.YTDLP_COOKIES_CONTENT.trim();
+        let fileBytes;
+
+        if (rawContent.startsWith('base64:') || rawContent.startsWith('data:')) {
+            let payload = rawContent;
+            if (payload.startsWith('base64:')) {
+                payload = payload.slice('base64:'.length);
+            } else {
+                const idx = payload.indexOf('base64,');
+                payload = idx !== -1 ? payload.slice(idx + 'base64,'.length) : payload;
+            }
+            payload = payload.replace(/\s+/g, '');
+            fileBytes = Buffer.from(payload, 'base64');
+        } else {
+            fileBytes = Buffer.from(rawContent, 'utf8');
+        }
+
+        if (!fileBytes || fileBytes.length === 0) {
+            throw new Error('Decoded cookies payload is empty');
+        }
+
+        fs.writeFileSync(YTDLP_COOKIES_FILE, fileBytes, { mode: 0o600 });
+        console.log(`[extractor] Wrote ${fileBytes.length} bytes from YTDLP_COOKIES_CONTENT to ${YTDLP_COOKIES_FILE}`);
     } catch (err) {
         console.error('[extractor] Failed to write cookies file from ENV:', err.message);
         YTDLP_COOKIES_FILE = null;
     }
 }
+
+console.log(`[extractor] Config: YTDLP_PATH=${YTDLP_PATH}, YTDLP_PROXY=${YTDLP_PROXY ? 'set' : 'unset'}, YTDLP_COOKIES_FILE=${YTDLP_COOKIES_FILE ? YTDLP_COOKIES_FILE : 'unset'}, COBALT_API_URL=${COBALT_API_URL ? 'set' : 'unset'}`);
 
 const REQUEST_HEADERS = {
     'User-Agent':
@@ -87,6 +106,13 @@ function buildCookieArgs() {
     return [];
 }
 
+function buildProxyArgs() {
+    if (YTDLP_PROXY) {
+        return ['--proxy', YTDLP_PROXY];
+    }
+    return [];
+}
+
 // ── yt-dlp Wrapper ───────────────────────────────────────────────
 
 /**
@@ -102,8 +128,12 @@ function runYtDlp(url, extraArgs = [], attemptBrowserCookies = true) {
         ];
         
         const cookieArgs = buildCookieArgs();
-        let args = [...baseArgs, ...cookieArgs, ...extraArgs, url];
+        const proxyArgs = buildProxyArgs();
+        let args = [...baseArgs, ...cookieArgs, ...proxyArgs, ...extraArgs, url];
 
+        if (proxyArgs.length) {
+            console.log('[extractor] Using proxy from YTDLP_PROXY');
+        }
         console.log(`[extractor] yt-dlp args: ${args.join(' ')}`);
 
         execFile(YTDLP_PATH, args, { timeout: YTDLP_TIMEOUT }, (err, stdout, stderr) => {
@@ -142,13 +172,14 @@ function runYtDlp(url, extraArgs = [], attemptBrowserCookies = true) {
 function runYtDlpJson(url, extraArgs = []) {
     return new Promise((resolve, reject) => {
         const cookieArgs = buildCookieArgs();
-        // If we want a browser fallback for metadata, we could add it, but usually standard cookies are fine
-        const args = [
-            '--dump-json',
-            '--no-warnings',
-            '--no-playlist',
-            ...cookieArgs,
-            ...extraArgs,
+    const proxyArgs = buildProxyArgs();
+    // If we want a browser fallback for metadata, we could add it, but usually standard cookies are fine
+    const args = [
+        '--dump-json',
+        '--no-warnings',
+        '--no-playlist',
+        ...cookieArgs,
+        ...proxyArgs,
             url,
         ];
 
@@ -451,22 +482,35 @@ async function extractFacebook(url) {
 async function extractYouTube(url) {
     console.log('[extractor] Extracting YouTube video:', url);
 
-    // Strategy 1: Try android client first (sometimes bypasses bot detection)
-    let videoUrl;
+    let videoUrl = null;
     const androidArgs = [
         '--no-check-certificate',
         '--extractor-args', 'youtube:player_client=android'
     ];
 
-    try {
-        videoUrl = await runYtDlp(url, androidArgs);
-        console.log('[extractor] ✅ YouTube extraction succeeded (android client)');
-    } catch (err) {
-        console.log('[extractor] Android client failed:', err.message);
+    // Strategy 1: If a proxy is configured, try yt-dlp through the proxy first.
+    if (YTDLP_PROXY) {
+        try {
+            console.log('[extractor] Trying YouTube via proxy first');
+            videoUrl = await runYtDlp(url, ['--no-check-certificate']);
+            console.log('[extractor] ✅ YouTube extraction succeeded (proxy)');
+        } catch (err) {
+            console.log('[extractor] Proxy attempt failed:', err.message);
+        }
     }
 
-    // Strategy 2: Try with web client + cookies if available
-    if (!videoUrl && YTDLP_COOKIES_FILE) {
+    // Strategy 2: Try android client next (sometimes bypasses bot detection)
+    if (!videoUrl) {
+        try {
+            videoUrl = await runYtDlp(url, androidArgs);
+            console.log('[extractor] ✅ YouTube extraction succeeded (android client)');
+        } catch (err) {
+            console.log('[extractor] Android client failed:', err.message);
+        }
+    }
+
+    // Strategy 3: Try with web client + cookies if available and proxy isn't already handling this.
+    if (!videoUrl && YTDLP_COOKIES_FILE && !YTDLP_PROXY) {
         try {
             console.log('[extractor] Retrying YouTube with cookies...');
             videoUrl = await runYtDlp(url, ['--no-check-certificate']);
@@ -476,7 +520,7 @@ async function extractYouTube(url) {
         }
     }
 
-    // Strategy 3: Try browser cookies fallback
+    // Strategy 4: Try browser cookies fallback if no explicit cookie file is configured
     if (!videoUrl && !YTDLP_COOKIES_FILE) {
         try {
             console.log('[extractor] Attempting browser cookies fallback...');
@@ -487,8 +531,8 @@ async function extractYouTube(url) {
         }
     }
 
-    // Strategy 4: Fallback to Cobalt API
-    if (!videoUrl) {
+    // Strategy 5: Finally, fallback to Cobalt API if configured.
+    if (!videoUrl && COBALT_API_URL) {
         console.log('[extractor] yt-dlp failed, trying Cobalt API fallback...');
         videoUrl = await fetchFromCobalt(url);
         if (videoUrl) console.log('[extractor] ✅ YouTube extraction succeeded (Cobalt API)');
