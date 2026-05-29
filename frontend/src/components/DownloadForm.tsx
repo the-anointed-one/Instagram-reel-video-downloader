@@ -343,49 +343,49 @@ export default function DownloadForm({ onResult, onAudioResult, onError, onReset
 
     return (
         <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div className="flex flex-col items-start gap-1">
+            <div className="flex items-center justify-between gap-3">
+                {/* ── Platform Tabs ── */}
+                <div className="flex items-center gap-1 bg-white/5 rounded-xl p-1 border border-white/8 flex-1">
+                    {PLATFORMS.map((p) => (
+                        <button
+                            key={p.id}
+                            type="button"
+                            id={`platform-tab-${p.id}`}
+                            onClick={() => handleTabSwitch(p.id)}
+                            className={[
+                                'flex items-center gap-1.5 flex-1 justify-center px-2 py-2 rounded-lg text-xs font-semibold',
+                                'border transition-all duration-200 cursor-pointer',
+                                activePlatform === p.id
+                                    ? p.tabActive + ' border-opacity-100'
+                                    : 'border-transparent text-slate-500 ' + p.tabHover,
+                            ].join(' ')}
+                            aria-pressed={activePlatform === p.id}
+                            aria-label={`Switch to ${p.label}`}
+                        >
+                            <span className={activePlatform === p.id ? p.iconColor : 'text-slate-600'}>
+                                {p.icon}
+                            </span>
+                            <span className="hidden sm:inline">{p.label}</span>
+                        </button>
+                    ))}
+                </div>
+
+                <div className="flex flex-col items-end gap-1 flex-shrink-0">
                     <button
                         type="button"
+                        title="Download multiple videos at once"
                         onClick={handleToggleBatch}
                         className={`btn-secondary text-sm px-3 py-2 ${batchMode ? 'bg-white/10 text-white border-white/20' : ''}`}
                     >
                         {batchMode ? 'Batch mode active' : 'Batch mode'}
                     </button>
-                    <span className="text-[10px] text-slate-500 pl-1">Download multiple videos at once</span>
+                    {batchMode && batchProgress && (
+                        <p className="text-[10px] text-slate-400">Downloading {batchProgress.current} of {batchProgress.total}...</p>
+                    )}
+                    {batchMode && batchSummary && (
+                        <p className="text-[10px] text-slate-400">{batchSummary.downloaded} completed, {batchSummary.failed} failed</p>
+                    )}
                 </div>
-                {batchMode && batchProgress && (
-                    <p className="text-sm text-slate-400">Downloading {batchProgress.current} of {batchProgress.total}...</p>
-                )}
-                {batchMode && batchSummary && (
-                    <p className="text-sm text-slate-400">{batchSummary.downloaded} completed, {batchSummary.failed} failed</p>
-                )}
-            </div>
-
-            {/* ── Platform Tabs ── */}
-            <div className="flex items-center gap-1 bg-white/5 rounded-xl p-1 border border-white/8">
-                {PLATFORMS.map((p) => (
-                    <button
-                        key={p.id}
-                        type="button"
-                        id={`platform-tab-${p.id}`}
-                        onClick={() => handleTabSwitch(p.id)}
-                        className={[
-                            'flex items-center gap-1.5 flex-1 justify-center px-2 py-2 rounded-lg text-xs font-semibold',
-                            'border transition-all duration-200 cursor-pointer',
-                            activePlatform === p.id
-                                ? p.tabActive + ' border-opacity-100'
-                                : 'border-transparent text-slate-500 ' + p.tabHover,
-                        ].join(' ')}
-                        aria-pressed={activePlatform === p.id}
-                        aria-label={`Switch to ${p.label}`}
-                    >
-                        <span className={activePlatform === p.id ? p.iconColor : 'text-slate-600'}>
-                            {p.icon}
-                        </span>
-                        <span className="hidden sm:inline">{p.label}</span>
-                    </button>
-                ))}
             </div>
 
             {/* ── URL Input Form ── */}
@@ -452,7 +452,7 @@ export default function DownloadForm({ onResult, onAudioResult, onError, onReset
 
                 {activePlatform === 'youtube' && !batchMode && isRegularYouTubeUrl(url) && (
                     <div className="text-blue-400 text-xs px-1 animate-fade-in pt-1">
-                        🎵 Full YouTube videos are extracted as audio only (MP3)
+                        <i className="fa-solid fa-music text-brand-400 text-xs mr-1" aria-hidden="true" /> Full YouTube videos are extracted as audio only (MP3)
                     </div>
                 )}
 

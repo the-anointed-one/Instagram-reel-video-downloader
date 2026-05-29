@@ -130,15 +130,6 @@ export default function HomeClient() {
                 )}
             </div>
 
-            {/* Stats Counter */}
-            {stats && stats.downloadsToday > 0 && (
-                <div className="text-center animate-fade-in mt-6 mb-2">
-                    <p className="text-sm font-medium text-slate-400">
-                        🔥 <span className="text-white">{stats.downloadsToday.toLocaleString()}</span> videos downloaded today
-                    </p>
-                </div>
-            )}
-
             {/* Result card */}
             {result && (
                 <VideoPreview data={result} />
@@ -167,65 +158,65 @@ export default function HomeClient() {
                         </button>
                     </div>
 
-                    <div className="grid gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                         {history.map((entry) => (
                             <div
                                 key={`${entry.downloadedAt}-${entry.videoUrl}`}
-                                className="flex items-center gap-3 p-3 bg-slate-950/80 border border-white/5 rounded-2xl"
+                                className="relative group glass-card overflow-hidden cursor-pointer hover:border-brand-500/30 transition-all duration-200"
+                                onClick={() => window.open(entry.videoUrl, '_blank')}
                             >
-                                <div className="w-16 h-16 rounded-2xl overflow-hidden bg-slate-900 flex-shrink-0">
+                                {/* Thumbnail */}
+                                <div className="aspect-video w-full bg-surface-800 relative overflow-hidden">
                                     {entry.thumbnail ? (
                                         <img
                                             src={entry.thumbnail}
                                             alt={entry.title || entry.platform}
-                                            className="object-cover w-full h-full"
+                                            className="w-full h-full object-cover"
                                         />
                                     ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-slate-500 text-xs">
+                                        <div className="w-full h-full flex items-center justify-center text-slate-600 text-xs">
                                             No preview
                                         </div>
                                     )}
+
+                                    {/* Play button overlay */}
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                        <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                                            <svg className="w-5 h-5 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                                                <path d="M8 5v14l11-7z" />
+                                            </svg>
+                                        </div>
+                                    </div>
+
+                                    {/* Platform badge */}
+                                    <div className="absolute bottom-1.5 left-1.5">
+                                        <span className="text-[10px] font-semibold bg-black/60 backdrop-blur-sm text-white px-1.5 py-0.5 rounded capitalize">
+                                            {entry.platform || 'video'}
+                                        </span>
+                                    </div>
+
+                                    {/* Download icon top-right */}
+                                    <div className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div className="w-7 h-7 rounded-lg bg-black/50 backdrop-blur-sm flex items-center justify-center">
+                                            <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                            </svg>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="min-w-0 flex-1">
-                                    <p className="text-sm font-semibold text-slate-100 truncate">
-                                        {entry.title || entry.platform}
+
+                                {/* Info below thumbnail */}
+                                <div className="p-2">
+                                    <p className="text-xs font-semibold text-slate-200 truncate">
+                                        {entry.title || entry.platform || 'Download'}
                                     </p>
-                                    <p className="text-xs text-slate-500 truncate">
-                                        {entry.platform || 'Unknown'} · {timeAgo(entry.downloadedAt)}
+                                    <p className="text-[10px] text-slate-500 mt-0.5">
+                                        {timeAgo(entry.downloadedAt)}
                                     </p>
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={() => window.open(entry.videoUrl, '_blank')}
-                                    className="btn-secondary text-xs px-3 py-2"
-                                >
-                                    Re-download
-                                </button>
                             </div>
                         ))}
                     </div>
-                </div>
-            )}
-
-            {/* Feature pills */}
-            {!result && !audioResult && !error && (
-                <div className="flex flex-wrap justify-center gap-3 animate-fade-in">
-                    {[
-                        { icon: '⚡', label: 'Instant extraction' },
-                        { icon: '🔒', label: 'No login needed' },
-                        { icon: '🚫', label: 'No watermark (TikTok)' },
-                        { icon: '📱', label: 'All platforms' },
-                        { icon: '🌐', label: 'Public videos only' },
-                        { icon: '📦', label: '24-hour cache' },
-                    ].map(({ icon, label }) => (
-                        <div
-                            key={label}
-                            className="flex items-center gap-1.5 text-slate-400 text-sm bg-white/5 border border-white/8 px-3.5 py-2 rounded-full"
-                        >
-                            <span>{icon}</span>
-                            <span>{label}</span>
-                        </div>
-                    ))}
                 </div>
             )}
         </>

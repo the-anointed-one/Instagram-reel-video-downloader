@@ -22,8 +22,8 @@ export default function AudioPreview({ data }: AudioPreviewProps) {
         <div className="glass-card p-5 animate-slide-up space-y-4">
             {/* Header */}
             <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                    🎵 Audio Extracted
+                <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider flex items-center">
+                    <i className="fa-solid fa-music text-brand-400 text-lg mr-2" aria-hidden="true" /> Audio Extracted
                 </h2>
                 {platform && (
                     <span className="text-xs bg-white/5 text-slate-400 border border-white/10 px-2.5 py-0.5 rounded-full font-medium capitalize">

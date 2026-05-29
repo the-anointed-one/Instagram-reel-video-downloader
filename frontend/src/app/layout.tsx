@@ -1,13 +1,29 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
+import { Syne, DM_Sans, Prata } from 'next/font/google';
 import Script from 'next/script';
 import Link from 'next/link';
+import { ThemeProvider } from 'next-themes';
 import './globals.css';
 
-const inter = Inter({
+const syne = Syne({
     subsets: ['latin'],
+    weight: ['700', '800'],
+    variable: '--font-syne',
     display: 'swap',
-    variable: '--font-inter',
+});
+
+const dmSans = DM_Sans({
+    subsets: ['latin'],
+    weight: ['400', '500', '600'],
+    variable: '--font-dm-sans',
+    display: 'swap',
+});
+
+const prata = Prata({
+    subsets: ['latin'],
+    weight: ['400'],
+    variable: '--font-prata',
+    display: 'swap',
 });
 
 export const viewport: Viewport = {
@@ -89,25 +105,34 @@ export default function RootLayout({
     children: React.ReactNode;
 }) {
     return (
-        <html lang="en" className={`dark ${inter.variable}`}>
-            <body className={inter.className}>
-                {children}
+        <html lang="en" suppressHydrationWarning className={`${syne.variable} ${dmSans.variable} ${prata.variable}`}>
+            <head>
+                <link 
+                    rel="stylesheet" 
+                    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+                    crossOrigin="anonymous"
+                />
+            </head>
+            <body className={dmSans.className}>
+                <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
+                    {children}
 
-                {/* ByteOasis footer branding + platform summary — injected at layout level */}
-                <div className="border-t border-white/5 py-4 text-center text-slate-600 text-xs space-y-1">
-                    <p>ReelFetch supports Instagram, TikTok, Facebook and YouTube Shorts.</p>
-                    <p>
-                        ReelFetch is a free tool by{' '}
-                        <Link
-                            href="https://byteoasis.ng"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-slate-500 hover:text-slate-400 underline underline-offset-2 transition-colors"
-                        >
-                            ByteOasis
-                        </Link>
-                    </p>
-                </div>
+                    {/* ByteOasis footer branding + platform summary — injected at layout level */}
+                    <div className="border-t border-white/5 py-4 text-center text-slate-600 text-xs space-y-1">
+                        <p>ReelFetch supports Instagram, TikTok, Facebook and YouTube Shorts.</p>
+                        <p>
+                            ReelFetch is a free tool by{' '}
+                            <Link
+                                href="https://byteoasis.ng"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-slate-500 hover:text-slate-400 underline underline-offset-2 transition-colors"
+                            >
+                                ByteOasis
+                            </Link>
+                        </p>
+                    </div>
+                </ThemeProvider>
 
                 <Script
                     src="https://www.googletagmanager.com/gtag/js?id=G-HBLHFY2YLR"

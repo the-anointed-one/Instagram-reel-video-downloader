@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+    darkMode: 'class',
     content: [
         './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
         './src/components/**/*.{js,ts,jsx,tsx,mdx}',
@@ -8,23 +9,25 @@ module.exports = {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Inter', 'system-ui', 'sans-serif'],
+                sans: ['var(--font-dm-sans)', 'system-ui', 'sans-serif'],
+                display: ['var(--font-syne)', 'system-ui', 'sans-serif'],
+                hero: ['var(--font-prata)', 'serif'],
             },
             colors: {
                 brand: {
-                    50: '#f0f4ff',
-                    100: '#e0e9ff',
-                    300: '#a5b4fc',
-                    400: '#818cf8',
-                    500: '#6366f1',
-                    600: '#4f46e5',
-                    700: '#4338ca',
+                    50: '#fff3ee',
+                    100: '#ffe0cc',
+                    300: '#ffb86b',
+                    400: '#ff9f3f',
+                    500: '#ff8412',
+                    600: '#f06a00',
+                    700: '#a33a12',
                 },
                 surface: {
-                    900: '#0f172a',
-                    800: '#1e293b',
-                    700: '#334155',
-                    600: '#475569',
+                    900: '#0e0c0a',
+                    800: '#1a1714',
+                    700: '#25201c',
+                    600: '#332b26',
                 },
             },
             animation: {
@@ -42,8 +45,8 @@ module.exports = {
                     '100%': { opacity: '1', transform: 'translateY(0)' },
                 },
                 pulseGlow: {
-                    '0%, 100%': { boxShadow: '0 0 0 0 rgba(99,102,241,0.4)' },
-                    '50%': { boxShadow: '0 0 24px 8px rgba(99,102,241,0.15)' },
+                    '0%, 100%': { boxShadow: '0 0 0 0 rgba(255,132,18,0.3)' },
+                    '50%': { boxShadow: '0 0 20px 6px rgba(255,132,18,0.12)' },
                 },
             },
         },
