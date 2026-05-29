@@ -1,7 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import Image from 'next/image';
-import { DownloadResponse } from '@/api/client';
+import { DownloadResponse, extractAudio } from '@/api/client';
 
 interface VideoPreviewProps {
     data: DownloadResponse;
@@ -9,10 +10,31 @@ interface VideoPreviewProps {
 
 export default function VideoPreview({ data }: VideoPreviewProps) {
     const { videoUrl, thumbnail, caption, title, cached } = data;
+    const [audioLoading, setAudioLoading] = useState(false);
+    const [audioError, setAudioError] = useState<string | null>(null);
 
     function handleCopyLink() {
         if (!videoUrl) return;
         navigator.clipboard.writeText(videoUrl);
+    }
+
+    async function handleExtractAudio() {
+        if (!videoUrl) return;
+        setAudioError(null);
+        setAudioLoading(true);
+
+        try {
+            const response = await extractAudio(videoUrl);
+            if (response.success && response.audioUrl) {
+                window.open(response.audioUrl, '_blank');
+            } else {
+                setAudioError(response.error || 'Could not extract audio.');
+            }
+        } catch (err) {
+            setAudioError('Could not extract audio. Please try again.');
+        } finally {
+            setAudioLoading(false);
+        }
     }
 
     return (
@@ -60,8 +82,7 @@ export default function VideoPreview({ data }: VideoPreviewProps) {
 
             {/* Actions */}
             {videoUrl && (
-                <div className="flex gap-3 pt-1">
-                    {/* Primary: download via direct link */}
+                <div className="flex flex-col sm:flex-row gap-3 pt-1">
                     <a
                         href={videoUrl}
                         download
@@ -69,14 +90,37 @@ export default function VideoPreview({ data }: VideoPreviewProps) {
                         rel="noopener noreferrer"
                         className="btn-primary flex-1 text-sm py-2.5"
                     >
-                        {/* Download icon */}
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                         </svg>
                         Download MP4
                     </a>
 
-                    {/* Secondary: copy link */}
+                    <button
+                        type="button"
+                        onClick={handleExtractAudio}
+                        disabled={audioLoading}
+                        className="btn-secondary text-sm py-2.5"
+                    >
+                        {audioLoading ? (
+                            <span className="flex items-center justify-center gap-2">
+                                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                                </svg>
+                                Extracting MP3…
+                            </span>
+                        ) : (
+                            <span className="flex items-center justify-center gap-2">
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6l12-2v13" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 9l12-2" />
+                                </svg>
+                                Extract MP3
+                            </span>
+                        )}
+                    </button>
+
                     <button
                         onClick={handleCopyLink}
                         className="btn-secondary text-sm py-2.5"
@@ -88,6 +132,9 @@ export default function VideoPreview({ data }: VideoPreviewProps) {
                         Copy Link
                     </button>
                 </div>
+            )}
+            {audioError && (
+                <p className="text-rose-400 text-xs pt-2">{audioError}</p>
             )}
         </div>
     );

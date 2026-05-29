@@ -22,8 +22,21 @@ export interface DownloadResponse {
     error?: string;
 }
 
+export interface AudioResponse {
+    success: boolean;
+    audioUrl?: string;
+    title?: string;
+    platform?: Platform;
+    error?: string;
+}
+
 export async function downloadVideo(url: string): Promise<DownloadResponse> {
     const { data } = await apiClient.post<DownloadResponse>('/api/download', { url });
+    return data;
+}
+
+export async function extractAudio(url: string): Promise<AudioResponse> {
+    const { data } = await apiClient.post<AudioResponse>('/api/download/audio', { url });
     return data;
 }
 

@@ -59,6 +59,16 @@ YouTube requires one of these:
 YTDLP_COOKIES_FILE=/absolute/path/to/cookies.txt
 ```
 
+#### Option C: Route yt-dlp through a residential proxy
+
+If your Render instance is blocked or rate-limited by YouTube, you can route `yt-dlp` traffic through a residential proxy.
+
+```bash
+YTDLP_PROXY=http://user:pass@proxy.webshare.io:80
+```
+
+Be sure to use a valid proxy provider and keep credentials secret.
+
 ### Step 3: Set Up Cobalt API Fallback (Optional but recommended)
 
 If yt-dlp still fails, use Cobalt as a backup:

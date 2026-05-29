@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef, FormEvent } from 'react';
-import { downloadVideo, DownloadResponse, Platform } from '@/api/client';
+import { downloadVideo, extractAudio, DownloadResponse, AudioResponse, Platform } from '@/api/client';
 
 // ── Platform Config ──────────────────────────────────────────────
 
@@ -94,33 +94,47 @@ function detectPlatformFromUrl(url: string): Platform | null {
     return null;
 }
 
+function isRegularYouTubeUrl(url: string): boolean {
+    if (!url) return false;
+    if (url.includes('/shorts/')) return false;
+    return /https?:\/\/(www\.|m\.)?youtube\.com\/watch|https?:\/\/youtu\.be\//.test(url);
+}
+
 // ── Props ────────────────────────────────────────────────────────
 
 interface DownloadFormProps {
     onResult: (data: DownloadResponse) => void;
+    onAudioResult: (data: AudioResponse) => void;
     onError: (error: { message: string; status?: number }) => void;
     onReset: () => void;
 }
 
 // ── Component ────────────────────────────────────────────────────
 
-export default function DownloadForm({ onResult, onError, onReset }: DownloadFormProps) {
+export default function DownloadForm({ onResult, onAudioResult, onError, onReset }: DownloadFormProps) {
     const [activePlatform, setActivePlatform] = useState<Platform>('instagram');
     const [url, setUrl] = useState('');
+    const [batchMode, setBatchMode] = useState(false);
+    const [batchUrls, setBatchUrls] = useState('');
     const [loading, setLoading] = useState(false);
+    const [processing, setProcessing] = useState(false);
     const [clientError, setClientError] = useState<string | null>(null);
+    const [batchErrors, setBatchErrors] = useState<Array<{ url: string; message: string }>>([]);
+    const [batchProgress, setBatchProgress] = useState<{ current: number; total: number } | null>(null);
+    const [batchSummary, setBatchSummary] = useState<{ downloaded: number; failed: number } | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
     const platform = PLATFORMS.find((p) => p.id === activePlatform)!;
 
     // Auto-detect platform when URL changes
     useEffect(() => {
+        if (batchMode) return;
         if (!url.trim()) return;
         const detected = detectPlatformFromUrl(url.trim());
         if (detected && detected !== activePlatform) {
             setActivePlatform(detected);
         }
-    }, [url, activePlatform]);
+    }, [url, activePlatform, batchMode]);
 
     const handleTabSwitch = useCallback(
         (id: Platform) => {
@@ -128,15 +142,25 @@ export default function DownloadForm({ onResult, onError, onReset }: DownloadFor
             setClientError(null);
             onReset();
             setUrl('');
+            setBatchUrls('');
+            setBatchErrors([]);
+            setBatchSummary(null);
+            setBatchProgress(null);
             setTimeout(() => inputRef.current?.focus(), 50);
         },
         [onReset]
     );
 
-    const validate = (value: string): string | null => {
+    const validateSingle = (value: string): string | null => {
         if (!value.trim()) return `Please enter a ${platform.label} URL.`;
         if (!platform.pattern.test(value.trim()))
             return `URL must be a valid ${platform.label} link. ${platform.placeholder}`;
+        return null;
+    };
+
+    const validateBatch = (lines: string[]): string | null => {
+        if (lines.length === 0) return 'Please enter at least one URL.';
+        if (lines.length > 10) return 'Batch size is limited to 10 URLs.';
         return null;
     };
 
@@ -149,12 +173,117 @@ export default function DownloadForm({ onResult, onError, onReset }: DownloadFor
         [onReset]
     );
 
+    const handleBatchChange = useCallback(
+        (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+            setBatchUrls(e.target.value);
+            setClientError(null);
+            setBatchErrors([]);
+            setBatchSummary(null);
+            setBatchProgress(null);
+            onReset();
+        },
+        [onReset]
+    );
+
+    const handleToggleBatch = useCallback(() => {
+        setBatchMode((prev) => !prev);
+        setUrl('');
+        setBatchUrls('');
+        setClientError(null);
+        setBatchErrors([]);
+        setBatchSummary(null);
+        setBatchProgress(null);
+        onReset();
+        setLoading(false);
+        setProcessing(false);
+        setTimeout(() => inputRef.current?.focus(), 50);
+    }, [onReset]);
+
     const handleSubmit = useCallback(
         async (e: FormEvent) => {
             e.preventDefault();
             onReset();
 
-            const err = validate(url);
+            if (batchMode) {
+                const lines = batchUrls
+                    .split('\n')
+                    .map((line) => line.trim())
+                    .filter(Boolean);
+
+                const batchError = validateBatch(lines);
+                if (batchError) {
+                    setClientError(batchError);
+                    return;
+                }
+
+                setProcessing(true);
+                setBatchErrors([]);
+                setBatchSummary(null);
+                setBatchProgress({ current: 1, total: lines.length });
+
+                let downloaded = 0;
+                let failed = 0;
+                const errors: Array<{ url: string; message: string }> = [];
+
+                for (let index = 0; index < lines.length; index += 1) {
+                    const line = lines[index];
+                    setBatchProgress({ current: index + 1, total: lines.length });
+
+                    if (!line) {
+                        errors.push({ url: '', message: 'Empty URL skipped.' });
+                        failed += 1;
+                        continue;
+                    }
+
+                    const detected = detectPlatformFromUrl(line);
+                    if (!detected && !platform.pattern.test(line)) {
+                        errors.push({ url: line, message: 'Invalid or unsupported URL.' });
+                        failed += 1;
+                        continue;
+                    }
+
+                    try {
+                        if (isRegularYouTubeUrl(line)) {
+                            const data = await extractAudio(line);
+                            if (data.success) {
+                                onAudioResult(data);
+                                downloaded += 1;
+                            } else {
+                                errors.push({ url: line, message: data.error || 'Server error' });
+                                failed += 1;
+                            }
+                        } else {
+                            const data = await downloadVideo(line);
+                            if (data.success) {
+                                onResult(data);
+                                downloaded += 1;
+                            } else {
+                                errors.push({ url: line, message: data.error || 'Server error' });
+                                failed += 1;
+                            }
+                        }
+                    } catch (axiosErr: unknown) {
+                        const err = axiosErr as {
+                            response?: { status?: number; data?: { error?: string } };
+                            message?: string;
+                        };
+                        const message =
+                            err.response?.data?.error ||
+                            err.message ||
+                            'Could not reach the server. Please try again.';
+                        errors.push({ url: line, message });
+                        failed += 1;
+                    }
+                }
+
+                setBatchErrors(errors);
+                setBatchSummary({ downloaded, failed });
+                setBatchProgress(null);
+                setProcessing(false);
+                return;
+            }
+
+            const err = validateSingle(url);
             if (err) {
                 setClientError(err);
                 return;
@@ -162,33 +291,58 @@ export default function DownloadForm({ onResult, onError, onReset }: DownloadFor
 
             setLoading(true);
             try {
-                const data = await downloadVideo(url.trim());
-                if (data.success) {
-                    onResult(data);
+                const trimmedUrl = url.trim();
+                if (isRegularYouTubeUrl(trimmedUrl)) {
+                    const data = await extractAudio(trimmedUrl);
+                    if (data.success) {
+                        onAudioResult(data);
+                    } else {
+                        onError({ message: data.error || 'Unknown error from server.' });
+                    }
                 } else {
-                    onError({ message: data.error || 'Unknown error from server.' });
+                    const data = await downloadVideo(trimmedUrl);
+                    if (data.success) {
+                        onResult(data);
+                    } else {
+                        onError({ message: data.error || 'Unknown error from server.' });
+                    }
                 }
             } catch (axiosErr: unknown) {
-                const e = axiosErr as {
+                const err = axiosErr as {
                     response?: { status?: number; data?: { error?: string } };
                     message?: string;
                 };
-                const status = e.response?.status;
+                const status = err.response?.status;
                 const message =
-                    e.response?.data?.error ||
-                    e.message ||
+                    err.response?.data?.error ||
+                    err.message ||
                     'Could not reach the server. Please try again.';
                 onError({ message, status });
             } finally {
                 setLoading(false);
             }
         },
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [url, activePlatform, onResult, onError, onReset]
+        [batchMode, batchUrls, url, onResult, onAudioResult, onError, onReset, activePlatform, platform]
     );
 
     return (
         <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <button
+                    type="button"
+                    onClick={handleToggleBatch}
+                    className={`btn-secondary text-sm px-3 py-2 ${batchMode ? 'bg-white/10 text-white border-white/20' : ''}`}
+                >
+                    {batchMode ? 'Batch mode active' : 'Batch mode'}
+                </button>
+                {batchMode && batchProgress && (
+                    <p className="text-sm text-slate-400">Downloading {batchProgress.current} of {batchProgress.total}...</p>
+                )}
+                {batchMode && batchSummary && (
+                    <p className="text-sm text-slate-400">{batchSummary.downloaded} completed, {batchSummary.failed} failed</p>
+                )}
+            </div>
+
             {/* ── Platform Tabs ── */}
             <div className="flex items-center gap-1 bg-white/5 rounded-xl p-1 border border-white/8">
                 {PLATFORMS.map((p) => (
@@ -219,37 +373,52 @@ export default function DownloadForm({ onResult, onError, onReset }: DownloadFor
             <form onSubmit={handleSubmit} className="space-y-3" noValidate>
                 <div className="flex flex-col sm:flex-row gap-3">
                     <div className="flex-1 relative">
-                        {/* Platform icon inside input */}
-                        <span className={`absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none ${platform.iconColor}`}>
-                            {platform.icon}
-                        </span>
-                        <input
-                            ref={inputRef}
-                            id="reel-url-input"
-                            type="url"
-                            value={url}
-                            onChange={handleChange}
-                            placeholder={platform.placeholder}
-                            className="input-field pl-10"
-                            disabled={loading}
-                            autoComplete="off"
-                            spellCheck={false}
-                        />
+                        {!batchMode && (
+                            <>
+                                <span className={`absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none ${platform.iconColor}`}>
+                                    {platform.icon}
+                                </span>
+                                <input
+                                    ref={inputRef}
+                                    id="reel-url-input"
+                                    type="url"
+                                    value={url}
+                                    onChange={handleChange}
+                                    placeholder={platform.placeholder}
+                                    className="input-field pl-10"
+                                    disabled={loading}
+                                    autoComplete="off"
+                                    spellCheck={false}
+                                />
+                            </>
+                        )}
+                        {batchMode && (
+                            <textarea
+                                id="reel-url-input"
+                                value={batchUrls}
+                                onChange={handleBatchChange}
+                                placeholder="Paste one URL per line..."
+                                rows={6}
+                                className="input-field resize-none"
+                                disabled={processing}
+                                spellCheck={false}
+                            />
+                        )}
                     </div>
 
                     <button
                         type="submit"
                         id="fetch-btn"
-                        disabled={loading}
+                        disabled={loading || processing}
                         className="btn-primary sm:w-auto w-full whitespace-nowrap"
                     >
-                        {loading ? (
+                        {loading || processing ? (
                             <>
                                 <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                                 </svg>
-                                Fetching…
+                                {batchMode ? 'Processing…' : 'Fetching…'}
                             </>
                         ) : (
                             <>
@@ -262,8 +431,25 @@ export default function DownloadForm({ onResult, onError, onReset }: DownloadFor
                     </button>
                 </div>
 
-                {clientError && (
-                    <p className="text-rose-400 text-xs px-1 animate-fade-in">{clientError}</p>
+                {activePlatform === 'youtube' && !batchMode && isRegularYouTubeUrl(url) && (
+                    <div className="text-blue-400 text-xs px-1 animate-fade-in pt-1">
+                        🎵 Full YouTube videos are extracted as audio only (MP3)
+                    </div>
+                )}
+
+                {(clientError || batchErrors.length > 0) && (
+                    <div className="space-y-2">
+                        {clientError && (
+                            <p className="text-rose-400 text-xs px-1 animate-fade-in">{clientError}</p>
+                        )}
+                        {batchErrors.length > 0 && (
+                            <div className="space-y-1 text-xs text-rose-400 px-1">
+                                {batchErrors.map((errorItem, index) => (
+                                    <p key={`${errorItem.url}-${index}`}>• {errorItem.url}: {errorItem.message}</p>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 )}
             </form>
         </div>

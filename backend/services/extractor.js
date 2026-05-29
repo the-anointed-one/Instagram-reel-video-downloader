@@ -118,14 +118,15 @@ function buildProxyArgs() {
 /**
  * Run yt-dlp with given extra args and return the first video URL.
  */
-function runYtDlp(url, extraArgs = [], attemptBrowserCookies = true) {
+function runYtDlp(url, extraArgs = [], attemptBrowserCookies = true, overrideArgs = null) {
     return new Promise((resolve, reject) => {
-        const baseArgs = [
+        const defaultArgs = [
             '--get-url',
             '--no-warnings',
             '--no-playlist',
             '--format', 'best[ext=mp4]/bestvideo[ext=mp4]+bestaudio/best',
         ];
+        const baseArgs = overrideArgs || defaultArgs;
         
         const cookieArgs = buildCookieArgs();
         const proxyArgs = buildProxyArgs();
@@ -561,6 +562,28 @@ async function extractYouTube(url) {
     return { videoUrl, ...metadata };
 }
 
+async function extractAudioUrl(url, platform) {
+    const audioArgs = ['-x', '--audio-format', 'mp3', '--audio-quality', '0'];
+    const overrideArgs = ['-x', '--audio-format', 'mp3', '--audio-quality', '0', '--no-warnings', '--no-playlist'];
+
+    let audioUrl;
+    try {
+        audioUrl = await runYtDlp(url, audioArgs, false, overrideArgs);
+    } catch (err) {
+        throw new Error(`Could not extract audio. ${err.message}`);
+    }
+
+    let title = 'Audio download';
+    try {
+        const json = await runYtDlpJson(url, []);
+        title = json.title || json.description || title;
+    } catch {
+        // Metadata is optional
+    }
+
+    return { audioUrl, title, platform };
+}
+
 // ═══════════════════════════════════════════════════════════════
 // Platform Router
 // ═══════════════════════════════════════════════════════════════
@@ -591,4 +614,4 @@ async function extractReelData(url) {
     return extractVideoData(url, 'instagram');
 }
 
-module.exports = { extractVideoData, extractReelData };
+module.exports = { extractVideoData, extractReelData, extractAudioUrl };
