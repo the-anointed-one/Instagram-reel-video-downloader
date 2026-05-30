@@ -30,6 +30,16 @@ const nextConfig = {
             },
         ];
     },
+    async redirects() {
+        return [
+            {
+                source: '/:path*',
+                has: [{ type: 'host', value: 'instagram-reel-downloader.byteoasis.ng' }],
+                destination: 'https://reelfetch.xyz/:path*',
+                permanent: true,
+            },
+        ];
+    },
 };
 
 module.exports = withMDX(nextConfig);

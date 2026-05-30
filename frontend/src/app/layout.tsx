@@ -107,11 +107,12 @@ export default function RootLayout({
     return (
         <html lang="en" suppressHydrationWarning className={`${syne.variable} ${dmSans.variable} ${prata.variable}`}>
             <head>
-                <link 
-                    rel="stylesheet" 
+                <link
+                    rel="stylesheet"
                     href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
                     crossOrigin="anonymous"
                 />
+                <meta name="google-site-verification" content="google60ebb5d04d5bde74.html" />
             </head>
             <body className={dmSans.className}>
                 <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
