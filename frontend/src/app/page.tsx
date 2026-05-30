@@ -115,7 +115,7 @@ export default async function HomePage() {
                             </div>
 
                             {/* Headline — tighter, smaller than before */}
-                            <h1 className="font-hero text-3xl sm:text-4xl lg:text-5xl text-white">
+                            <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white">
                                 Download Videos From{' '}
                                 <span className="bg-gradient-to-r from-brand-400 to-brand-600 bg-clip-text text-transparent">
                                     Any Platform
@@ -337,53 +337,70 @@ export default async function HomePage() {
                     {/* ── Tips & Guides Blog Cards ──────────────────────────────── */}
                     {latestPosts.length > 0 && (
                         <section className="w-full max-w-5xl mt-20" aria-label="Tips and Guides">
-                            <h2 className="text-2xl font-bold text-white text-center mb-8">
+                            <h2 className="text-2xl font-bold text-white text-center mb-8 font-display">
                                 Tips &amp; Guides
                             </h2>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {latestPosts.map((post) => {
                                     const excerpt =
-                                        post.description?.slice(0, 120) ||
-                                        post.content.replace(/[#*`\[\]]/g, '').slice(0, 120);
+                                        post.description?.slice(0, 100) ||
+                                        post.content.replace(/[#*`\[\]]/g, '').slice(0, 100);
                                     return (
                                         <Link
                                             key={post.slug}
                                             href={`/blog/${post.slug}`}
-                                            className="group glass-card p-6 flex flex-col gap-3 hover:border-brand-500/30 hover:bg-white/[0.04] transition-all duration-200"
+                                            className="group glass-card overflow-hidden hover:bg-white/[0.04] transition-all duration-200 flex flex-col"
                                             aria-label={`Read: ${post.title}`}
                                         >
-                                            {/* Tag pill */}
-                                            {post.tags?.[0] && (
-                                                <span className="self-start text-[10px] font-semibold uppercase tracking-wider text-brand-400 bg-brand-500/10 border border-brand-500/20 px-2 py-0.5 rounded-full">
-                                                    {post.tags[0]}
-                                                </span>
-                                            )}
+                                            {/* Image */}
+                                            <div className="aspect-video w-full relative overflow-hidden bg-surface-800">
+                                                {post.featuredImage ? (
+                                                    <Image
+                                                        src={post.featuredImage}
+                                                        alt={post.title}
+                                                        fill
+                                                        className="object-cover group-hover:scale-105 transition-transform duration-500"
+                                                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-slate-600">
+                                                        <i className="fa-solid fa-image text-2xl opacity-20" />
+                                                    </div>
+                                                )}
+                                                <div className="absolute inset-0 bg-gradient-to-t from-surface-900/60 to-transparent" />
+                                            </div>
 
-                                            {/* Title */}
-                                            <h3 className="text-sm font-semibold text-slate-200 group-hover:text-white leading-snug transition-colors">
-                                                {post.title}
-                                            </h3>
+                                            {/* Content */}
+                                            <div className="p-5 flex flex-col flex-1 space-y-2">
+                                                {/* Tag pill */}
+                                                {post.tags?.[0] && (
+                                                    <span className="self-start text-[9px] font-semibold uppercase tracking-wider text-brand-400 bg-brand-500/10 border border-brand-500/20 px-2 py-0.5 rounded-full">
+                                                        {post.tags[0]}
+                                                    </span>
+                                                )}
 
-                                            {/* Excerpt */}
-                                            <p className="text-xs text-slate-500 leading-relaxed flex-1">
-                                                {excerpt.trim()}
-                                                {excerpt.length >= 120 ? '…' : ''}
-                                            </p>
+                                                <h3 className="text-sm font-semibold text-slate-200 group-hover:text-white leading-snug transition-colors line-clamp-2">
+                                                    {post.title}
+                                                </h3>
 
-                                            {/* Footer */}
-                                            <div className="flex items-center justify-between mt-auto pt-2 border-t border-white/5">
-                                                <span className="text-[10px] text-slate-600">{post.readTime}</span>
-                                                <span className="text-xs text-brand-400 group-hover:text-brand-300 font-medium transition-colors">
-                                                    Read more →
-                                                </span>
+                                                <p className="text-[11px] text-slate-500 leading-relaxed flex-1 line-clamp-2">
+                                                    {excerpt.trim()}…
+                                                </p>
+
+                                                <div className="flex items-center justify-between mt-auto pt-3 border-t border-white/5">
+                                                    <span className="text-[9px] text-slate-600">{post.readTime}</span>
+                                                    <span className="text-[11px] text-brand-400 group-hover:text-brand-300 font-medium transition-colors">
+                                                        Read more →
+                                                    </span>
+                                                </div>
                                             </div>
                                         </Link>
                                     );
                                 })}
                             </div>
-                            <p className="text-center mt-6">
-                                <Link href="/blog" className="text-sm text-slate-500 hover:text-brand-400 transition-colors">
-                                    View all guides →
+                            <p className="text-center mt-8">
+                                <Link href="/blog" className="text-sm text-slate-500 hover:text-brand-400 transition-colors inline-flex items-center gap-2">
+                                    View all guides <i className="fa-solid fa-arrow-right text-xs" />
                                 </Link>
                             </p>
                         </section>

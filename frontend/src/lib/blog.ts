@@ -9,6 +9,7 @@ export interface BlogPost {
     date: string;
     readTime: string;
     tags: string[];
+    featuredImage?: string;
     content: string;
 }
 
@@ -45,6 +46,7 @@ export function getPostBySlug(slug: string): BlogPost | null {
         date: data.date || new Date().toISOString(),
         readTime: data.readTime || estimateReadTime(content),
         tags: data.tags || [],
+        featuredImage: data.featuredImage || null,
         content,
     };
 }
