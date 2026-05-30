@@ -1,21 +1,61 @@
 'use client';
 
-import { useState } from 'react';
-import { AudioResponse } from '@/api/client';
+import { useCallback, useEffect, useState } from 'react';
+import { AudioResponse, extractAudio } from '@/api/client';
 
 interface AudioPreviewProps {
     data: AudioResponse;
 }
 
 export default function AudioPreview({ data }: AudioPreviewProps) {
-    const { audioUrl, title, platform } = data;
+    const [audioUrl, setAudioUrl] = useState(data.audioUrl);
+    const [title, setTitle] = useState(data.title);
+    const [platform] = useState(data.platform);
     const [copied, setCopied] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(data.error ?? null);
+    const sourceUrl = data.sourceUrl;
+
+    const runExtraction = useCallback(async () => {
+        if (!sourceUrl) {
+            setError('No source URL available for audio extraction.');
+            return;
+        }
+
+        setLoading(true);
+        setError(null);
+
+        try {
+            const response = await extractAudio(sourceUrl);
+            if (response.success && response.audioUrl) {
+                setAudioUrl(response.audioUrl);
+                if (response.title) setTitle(response.title);
+            } else {
+                setError(response.error || 'Could not extract audio.');
+            }
+        } catch {
+            setError('Could not extract audio. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    }, [sourceUrl]);
+
+    useEffect(() => {
+        if (!audioUrl && sourceUrl) {
+            runExtraction();
+        }
+    }, [audioUrl, sourceUrl, runExtraction]);
 
     function handleCopyLink() {
         if (!audioUrl) return;
         navigator.clipboard.writeText(audioUrl);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
+    }
+
+    function handleDownload() {
+        if (!audioUrl) return;
+        window.open(audioUrl, '_blank', 'noopener,noreferrer');
     }
 
     return (
@@ -37,7 +77,13 @@ export default function AudioPreview({ data }: AudioPreviewProps) {
                 <p className="text-slate-100 font-medium line-clamp-2">
                     {title || 'YouTube Audio'}
                 </p>
-                {!audioUrl && (
+                {loading && (
+                    <p className="text-slate-400 text-sm">Extracting audio…</p>
+                )}
+                {error && !loading && (
+                    <p className="text-rose-400 text-sm">{error}</p>
+                )}
+                {!audioUrl && !loading && !error && (
                     <p className="text-rose-400 text-sm">
                         Audio extraction failed. Please try again.
                     </p>
@@ -47,18 +93,16 @@ export default function AudioPreview({ data }: AudioPreviewProps) {
             {/* Actions */}
             {audioUrl && (
                 <div className="flex flex-col sm:flex-row gap-3 pt-1">
-                    <a
-                        href={audioUrl}
-                        download
-                        target="_blank"
-                        rel="noopener noreferrer"
+                    <button
+                        type="button"
+                        onClick={handleDownload}
                         className="btn-primary flex-1 text-sm py-2.5 flex items-center justify-center gap-2"
                     >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                         </svg>
                         Download MP3
-                    </a>
+                    </button>
 
                     <button
                         type="button"
@@ -76,13 +120,22 @@ export default function AudioPreview({ data }: AudioPreviewProps) {
                         ) : (
                             <>
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                                 </svg>
                                 Copy Link
                             </>
                         )}
                     </button>
                 </div>
+            )}
+            {!audioUrl && sourceUrl && !loading && (
+                <button
+                    type="button"
+                    onClick={runExtraction}
+                    className="btn-primary text-sm py-2.5 w-full"
+                >
+                    Extract MP3
+                </button>
             )}
             {audioUrl && (
                 <div className="flex gap-2 pt-2 border-t border-white/5 mt-3">

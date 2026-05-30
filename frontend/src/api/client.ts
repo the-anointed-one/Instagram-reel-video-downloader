@@ -27,6 +27,7 @@ export interface AudioResponse {
     audioUrl?: string;
     title?: string;
     platform?: Platform;
+    sourceUrl?: string;
     error?: string;
 }
 
@@ -37,7 +38,10 @@ export async function downloadVideo(url: string): Promise<DownloadResponse> {
 
 export async function extractAudio(url: string): Promise<AudioResponse> {
     const { data } = await apiClient.post<AudioResponse>('/api/download/audio', { url });
-    return data;
+    return {
+        ...data,
+        sourceUrl: url,
+    };
 }
 
 /** @deprecated Use downloadVideo instead */

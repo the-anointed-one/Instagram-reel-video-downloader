@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { fetchStats } from '@/api/client';
 
 export default function DownloadCounter() {
     const [mounted, setMounted] = useState(false);
@@ -9,37 +10,39 @@ export default function DownloadCounter() {
     useEffect(() => {
         setMounted(true);
 
-        let total = 0;
+        let cancelled = false;
 
-        try {
-            // Read from history length if it exists
-            const historyStr = localStorage.getItem('reelfetch_history');
-            if (historyStr) {
-                const history = JSON.parse(historyStr);
-                if (Array.isArray(history)) {
-                    total = history.length;
-                }
+        async function loadStats() {
+            try {
+                const { downloadsToday } = await fetchStats();
+                if (cancelled) return;
+
+                const total = downloadsToday;
+                let startTimestamp: number | null = null;
+                const duration = 1500;
+
+                const step = (timestamp: number) => {
+                    if (cancelled) return;
+                    if (!startTimestamp) startTimestamp = timestamp;
+                    const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                    const easeProgress = progress * (2 - progress);
+                    setCount(Math.floor(easeProgress * total));
+
+                    if (progress < 1) {
+                        window.requestAnimationFrame(step);
+                    }
+                };
+                window.requestAnimationFrame(step);
+            } catch {
+                if (!cancelled) setCount(0);
             }
-
-            // Animate counting up from 0 to total over 1.5 seconds
-            let startTimestamp: number | null = null;
-            const duration = 1500;
-
-            const step = (timestamp: number) => {
-                if (!startTimestamp) startTimestamp = timestamp;
-                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-                // Ease out quad formula
-                const easeProgress = progress * (2 - progress);
-                setCount(Math.floor(easeProgress * total));
-
-                if (progress < 1) {
-                    window.requestAnimationFrame(step);
-                }
-            };
-            window.requestAnimationFrame(step);
-        } catch {
-            setCount(0);
         }
+
+        loadStats();
+
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     if (!mounted) {
