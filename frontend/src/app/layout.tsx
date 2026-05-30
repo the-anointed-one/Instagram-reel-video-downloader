@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Syne, DM_Sans, Prata } from 'next/font/google';
+import { Syne } from 'next/font/google';
 import Script from 'next/script';
 import Link from 'next/link';
 import { ThemeProvider } from 'next-themes';
@@ -7,22 +7,8 @@ import './globals.css';
 
 const syne = Syne({
     subsets: ['latin'],
-    weight: ['700', '800'],
+    weight: ['400', '500', '600', '700', '800'],
     variable: '--font-syne',
-    display: 'swap',
-});
-
-const dmSans = DM_Sans({
-    subsets: ['latin'],
-    weight: ['400', '500', '600'],
-    variable: '--font-dm-sans',
-    display: 'swap',
-});
-
-const prata = Prata({
-    subsets: ['latin'],
-    weight: ['400'],
-    variable: '--font-prata',
     display: 'swap',
 });
 
@@ -105,11 +91,11 @@ export default function RootLayout({
     children: React.ReactNode;
 }) {
     return (
-        <html lang="en" suppressHydrationWarning className={`${syne.variable} ${dmSans.variable} ${prata.variable}`}>
+        <html lang="en" suppressHydrationWarning className={syne.variable}>
             <head>
                 <meta name="google-site-verification" content="google60ebb5d04d5bde74.html" />
             </head>
-            <body className={dmSans.className}>
+            <body className={syne.className}>
                 <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
                     {children}
 

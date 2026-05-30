@@ -9,9 +9,9 @@ module.exports = {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['var(--font-dm-sans)', 'system-ui', 'sans-serif'],
+                sans: ['var(--font-syne)', 'system-ui', 'sans-serif'],
                 display: ['var(--font-syne)', 'system-ui', 'sans-serif'],
-                hero: ['var(--font-prata)', 'serif'],
+                hero: ['var(--font-syne)', 'serif'],
             },
             colors: {
                 brand: {

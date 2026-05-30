@@ -42,7 +42,7 @@
   body {
     background-color: var(--bg-primary);
     color: var(--text-primary);
-    font-family: var(--font-dm-sans), system-ui, sans-serif;
+    font-family: var(--font-syne), system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     min-height: 100vh;
     position: relative;
