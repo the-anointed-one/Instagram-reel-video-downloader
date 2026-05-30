@@ -3,7 +3,6 @@ import { Syne, DM_Sans, Prata } from 'next/font/google';
 import Script from 'next/script';
 import Link from 'next/link';
 import { ThemeProvider } from 'next-themes';
-import FontAwesome from '@/components/FontAwesome';
 import './globals.css';
 
 const syne = Syne({
@@ -111,7 +110,6 @@ export default function RootLayout({
                 <meta name="google-site-verification" content="google60ebb5d04d5bde74.html" />
             </head>
             <body className={dmSans.className}>
-                <FontAwesome />
                 <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
                     {children}
 

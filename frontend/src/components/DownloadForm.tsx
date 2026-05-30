@@ -452,7 +452,9 @@ export default function DownloadForm({ onResult, onAudioResult, onError, onReset
 
                 {activePlatform === 'youtube' && !batchMode && isRegularYouTubeUrl(url) && (
                     <div className="text-blue-400 text-xs px-1 animate-fade-in pt-1">
-                        <i className="fa-solid fa-music text-brand-400 text-xs mr-1" aria-hidden="true" /> Full YouTube videos are extracted as audio only (MP3)
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" className="inline w-3 h-3 text-brand-400 mr-1" fill="currentColor" aria-hidden="true">
+                            <path d="M499.1 6.3c8.1 6 12.9 15.6 12.9 25.7l0 72 0 264c0 44.2-43 80-96 80s-96-35.8-96-80s43-80 96-80c11.2 0 22 1.6 32 4.6L448 72l-320 0 0 216c0 44.2-43 80-96 80S-32 332.2-32 288s43-80 96-80c11.2 0 22 1.6 32 4.6L96 32c0-17.7 14.3-32 32-32l320 0c13 0 25 6.4 32.1 12.3z" />
+                        </svg> Full YouTube videos are extracted as audio only (MP3)
                     </div>
                 )}
 

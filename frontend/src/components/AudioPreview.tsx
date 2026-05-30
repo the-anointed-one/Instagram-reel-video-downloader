@@ -63,7 +63,9 @@ export default function AudioPreview({ data }: AudioPreviewProps) {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider flex items-center">
-                    <i className="fa-solid fa-music text-brand-400 text-lg mr-2" aria-hidden="true" /> Audio Extracted
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" className="inline w-5 h-5 text-brand-400 mr-2" fill="currentColor" aria-hidden="true">
+                        <path d="M499.1 6.3c8.1 6 12.9 15.6 12.9 25.7l0 72 0 264c0 44.2-43 80-96 80s-96-35.8-96-80s43-80 96-80c11.2 0 22 1.6 32 4.6L448 72l-320 0 0 216c0 44.2-43 80-96 80S-32 332.2-32 288s43-80 96-80c11.2 0 22 1.6 32 4.6L96 32c0-17.7 14.3-32 32-32l320 0c13 0 25 6.4 32.1 12.3z" />
+                    </svg> Audio Extracted
                 </h2>
                 {platform && (
                     <span className="text-xs bg-white/5 text-slate-400 border border-white/10 px-2.5 py-0.5 rounded-full font-medium capitalize">

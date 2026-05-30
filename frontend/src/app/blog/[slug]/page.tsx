@@ -166,7 +166,9 @@ export default async function BlogPostPage({ params }: Props) {
                         {/* CTA */}
                         <div className="glass-card p-8 mt-16 text-center space-y-4 border-brand-500/20 bg-brand-500/5">
                             <div className="w-12 h-12 rounded-2xl bg-brand-500 flex items-center justify-center mx-auto mb-2 shadow-lg shadow-brand-500/20">
-                                <i className="fa-solid fa-cloud-arrow-down text-white text-xl" />
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512" className="w-5 h-5 text-white" fill="currentColor" aria-hidden="true">
+                                    <path d="M0 336c0 79.5 64.5 144 144 144l368 0c70.7 0 128-57.3 128-128 0-59.5-40.6-109.5-95.4-123.3C538.7 112.3 478.3 64 408 64c-42.5 0-81.2 16.5-110.1 43.4-16.1-32.9-49.8-55.5-89.5-55.5-54.4 0-98.5 44-98.5 98.4 0 6.2 .6 12.3 1.7 18.2C44.6 172.2 0 248.5 0 336zM288 416l0-192 80 0c17.7 0 32-14.3 32-32s-14.3-32-32-32L256 160c-17.7 0-32 14.3-32 32l0 192c0 17.7 14.3 32 32 32s32-14.3 32-32z" />
+                                </svg>
                             </div>
                             <h2 className="text-xl font-bold text-white font-display">Ready to download a Reel?</h2>
                             <p className="text-sm text-slate-400 max-w-xs mx-auto">

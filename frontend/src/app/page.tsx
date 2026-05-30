@@ -139,6 +139,7 @@ export default async function HomePage() {
                                             src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&q=80"
                                             alt="Instagram Reel thumbnail showing a vertical mountain landscape"
                                             fill
+                                            priority
                                             className="object-cover"
                                             sizes="(max-width: 640px) 50vw, 200px"
                                         />
@@ -161,7 +162,9 @@ export default async function HomePage() {
                                                 ))}
                                             </div>
                                             <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-black/40 backdrop-blur-sm text-white px-2 py-0.5 rounded-full">
-                                                <i className="fa-brands fa-instagram" aria-hidden="true" /> Instagram
+                                                <svg className="inline w-3 h-3" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
+                                                </svg> Instagram
                                             </span>
                                         </div>
                                     </div>
@@ -188,7 +191,9 @@ export default async function HomePage() {
                                             </div>
                                         </div>
                                         <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-black/50 text-white px-2 py-0.5 rounded-full self-start">
-                                            <i className="fa-brands fa-tiktok" aria-hidden="true" /> TikTok
+                                            <svg className="inline w-3 h-3" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                                <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.84a8.2 8.2 0 004.79 1.52V6.92a4.86 4.86 0 01-1.02-.23z" />
+                                            </svg> TikTok
                                         </span>
                                     </div>
                                 </div>
@@ -214,7 +219,9 @@ export default async function HomePage() {
                                             </div>
                                         </div>
                                         <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-black/50 text-white px-2 py-0.5 rounded-full self-start">
-                                            <i className="fa-brands fa-facebook" aria-hidden="true" /> Facebook
+                                            <svg className="inline w-3 h-3" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                                            </svg> Facebook
                                         </span>
                                     </div>
                                 </div>
@@ -246,7 +253,9 @@ export default async function HomePage() {
                                                 ))}
                                             </div>
                                             <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-black/40 backdrop-blur-sm text-white px-2 py-0.5 rounded-full">
-                                                <i className="fa-brands fa-youtube" aria-hidden="true" /> YouTube
+                                                <svg className="inline w-3 h-3" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                                    <path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                                                </svg> YouTube
                                             </span>
                                         </div>
                                     </div>
@@ -273,7 +282,9 @@ export default async function HomePage() {
                                             </div>
                                         </div>
                                         <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-black/50 text-white px-2 py-0.5 rounded-full self-start">
-                                            <i className="fa-solid fa-bolt" aria-hidden="true" /> Instant
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" className="inline w-3 h-3" fill="currentColor" aria-hidden="true">
+                                                <path d="M349.4 44.6c5.9-13.7 1.5-29.7-10.6-38.5s-28.6-8-39.9 1.8l-256 224c-10 8.8-13.6 22.9-8.9 35.3S50.7 288 64 288l111.5 0L98.6 467.4c-5.9 13.7-1.5 29.7 10.6 38.5s28.6 8 39.9-1.8l256-224c10-8.8 13.6-22.9 8.9-35.3s-16.6-20.7-29.9-20.7l-111.5 0 76.9-179.4z" />
+                                            </svg> Instant
                                         </span>
                                     </div>
                                 </div>
@@ -299,7 +310,9 @@ export default async function HomePage() {
                                             </div>
                                         </div>
                                         <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-black/50 text-white px-2 py-0.5 rounded-full self-start">
-                                            <i className="fa-solid fa-ban" aria-hidden="true" /> No Watermark
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" className="inline w-3 h-3" fill="currentColor" aria-hidden="true">
+                                                <path d="M367.2 412.5L99.5 144.8C77.1 176.1 64 214.5 64 256c0 106 86 192 192 192c41.5 0 79.9-13.1 111.2-35.5zm45.3-45.3C434.9 335.9 448 297.5 448 256c0-106-86-192-192-192c-41.5 0-79.9 13.1-111.2 35.5L412.5 367.2zM0 256a256 256 0 1 1 512 0A256 256 0 1 1 0 256z" />
+                                            </svg> No Watermark
                                         </span>
                                     </div>
                                 </div>
@@ -319,7 +332,9 @@ export default async function HomePage() {
                                         '24-hour smart caching',
                                     ].map((text) => (
                                         <li key={text} className="flex items-center gap-2">
-                                            <i className="fa-solid fa-circle-check text-brand-500 flex-shrink-0" aria-hidden="true" />
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" className="inline w-4 h-4 text-brand-500 flex-shrink-0" fill="currentColor" aria-hidden="true">
+                                                <path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209L241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z" />
+                                            </svg>
                                             <span>{text}</span>
                                         </li>
                                     ))}
@@ -364,7 +379,9 @@ export default async function HomePage() {
                                                     />
                                                 ) : (
                                                     <div className="w-full h-full flex items-center justify-center text-slate-600">
-                                                        <i className="fa-solid fa-image text-2xl opacity-20" />
+                                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" className="w-8 h-8 opacity-20" fill="currentColor" aria-hidden="true">
+                                                            <path d="M0 96C0 60.7 28.7 32 64 32l384 0c35.3 0 64 28.7 64 64l0 320c0 35.3-28.7 64-64 64L64 480c-35.3 0-64-28.7-64-64L0 96zM323.8 202.5c-4.5-6.6-11.9-10.5-19.8-10.5s-15.4 3.9-19.8 10.5l-87 127.6L170.7 297c-4.6-5.7-11.5-9-18.7-9s-14.2 3.3-18.7 9l-64 80c-5.8 7.2-6.9 17.1-2.9 25.4s12.4 13.6 21.6 13.6l96 0 32 0 208 0c8.9 0 17.1-4.9 21.2-12.8s3.6-17.4-1.4-24.7l-120-176zM112 192a48 48 0 1 0 0-96 48 48 0 1 0 0 96z" />
+                                                        </svg>
                                                     </div>
                                                 )}
                                                 <div className="absolute inset-0 bg-gradient-to-t from-surface-900/60 to-transparent" />
@@ -400,7 +417,7 @@ export default async function HomePage() {
                             </div>
                             <p className="text-center mt-8">
                                 <Link href="/blog" className="text-sm text-slate-500 hover:text-brand-400 transition-colors inline-flex items-center gap-2">
-                                    View all guides <i className="fa-solid fa-arrow-right text-xs" />
+                                    View all guides <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" className="inline w-3 h-3" fill="currentColor" aria-hidden="true"><path d="M438.6 278.6c12.5-12.5 12.5-32.8 0-45.3l-160-160c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L338.8 224 32 224c-17.7 0-32 14.3-32 32s14.3 32 32 32l306.7 0L233.4 393.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0l160-160z" /></svg>
                                 </Link>
                             </p>
                         </section>
