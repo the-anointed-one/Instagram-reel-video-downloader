@@ -8,7 +8,7 @@ const apiClient = axios.create({
     },
 });
 
-export type Platform = 'instagram' | 'tiktok' | 'facebook' | 'youtube' | 'twitter';
+export type Platform = 'instagram' | 'tiktok' | 'facebook' | 'youtube' | 'twitter' | 'pinterest';
 
 export interface DownloadResponse {
     success: boolean;

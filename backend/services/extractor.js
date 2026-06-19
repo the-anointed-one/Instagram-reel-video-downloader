@@ -584,6 +584,63 @@ async function extractAudioUrl(url, platform) {
     return { audioUrl, title, platform };
 }
 
+// ── Pinterest ─────────────────────────────────────────────────────
+
+async function extractPinterest(url) {
+    console.log('[extractor] Extracting Pinterest video:', url);
+
+    let videoUrl = null;
+    let metadata = { title: 'Pinterest Video', caption: null, thumbnail: null, author: null };
+
+    // Strategy 1: Single yt-dlp JSON call — gets URL + metadata together (saves a second yt-dlp invocation)
+    try {
+        const json = await runYtDlpJson(url, ['--no-check-certificate']);
+        // yt-dlp stores the direct stream URL in json.url or json.formats[-1].url
+        videoUrl = json.url
+            || (json.formats && json.formats.length > 0
+                ? json.formats[json.formats.length - 1].url
+                : null);
+        if (videoUrl) {
+            metadata = {
+                title: json.title || json.description || 'Pinterest Video',
+                caption: json.description || null,
+                thumbnail: json.thumbnail || null,
+                author: json.uploader || json.channel || null,
+            };
+            console.log('[extractor] ✅ Pinterest yt-dlp JSON extraction succeeded');
+        }
+    } catch (err) {
+        const msg = err.message || '';
+        // yt-dlp explicitly says this pin has no video
+        if (msg.includes('no video') || msg.includes('image') || msg.includes('No video formats')) {
+            throw new Error('This Pinterest pin does not contain a video. Only video pins can be downloaded.');
+        }
+        console.log('[extractor] Pinterest yt-dlp JSON failed:', msg);
+    }
+
+    // Strategy 2: --get-url fallback (in case JSON dump misses the URL field)
+    if (!videoUrl) {
+        try {
+            videoUrl = await runYtDlp(url, ['--no-check-certificate']);
+            console.log('[extractor] ✅ Pinterest yt-dlp --get-url fallback succeeded');
+        } catch (err) {
+            console.log('[extractor] Pinterest --get-url fallback failed:', err.message);
+        }
+    }
+
+    // Strategy 3: Cobalt API fallback
+    if (!videoUrl) {
+        videoUrl = await fetchFromCobalt(url);
+        if (videoUrl) console.log('[extractor] ✅ Pinterest Cobalt fallback succeeded');
+    }
+
+    if (!videoUrl) {
+        throw new Error('Could not extract Pinterest video. The pin may be private, deleted, or not a video pin.');
+    }
+
+    return { videoUrl, ...metadata };
+}
+
 // ── Twitter/X ─────────────────────────────────────────────────────
 
 async function extractTwitter(url) {
@@ -632,6 +689,8 @@ async function extractVideoData(url, platform) {
             return extractYouTube(url);
         case 'twitter':
             return extractTwitter(url);
+        case 'pinterest':
+            return extractPinterest(url);
         default:
             throw new Error(`Unknown platform: ${platform}`);
     }

@@ -18,6 +18,8 @@ const PLATFORM_PATTERNS = {
     },
     tiktok: {
         hostnames: ['www.tiktok.com', 'tiktok.com', 'vm.tiktok.com', 'vt.tiktok.com'],
+        // vm./vt. are redirect hosts — any non-empty path is valid; yt-dlp follows the redirect
+        shortHosts: ['vm.tiktok.com', 'vt.tiktok.com'],
         pathPattern: /^\/@?[^/]+\/video\/\d+|^\/t\/[A-Za-z0-9]+/,
         errorHint: 'e.g. https://www.tiktok.com/@user/video/123456789',
     },
@@ -43,6 +45,27 @@ const PLATFORM_PATTERNS = {
         pathPattern: /^\/[^/]+\/status\/\d+/,
         errorHint: 'e.g. https://x.com/user/status/123456789',
     },
+    pinterest: {
+        // Include common country-TLD variants so international users aren't blocked
+        hostnames: [
+            'www.pinterest.com', 'pinterest.com', 'pin.it',
+            'www.pinterest.co.uk', 'pinterest.co.uk',
+            'www.pinterest.fr',   'pinterest.fr',
+            'www.pinterest.de',   'pinterest.de',
+            'www.pinterest.es',   'pinterest.es',
+            'www.pinterest.ca',   'pinterest.ca',
+            'www.pinterest.com.au','pinterest.com.au',
+            'www.pinterest.it',   'pinterest.it',
+            'www.pinterest.pt',   'pinterest.pt',
+            'www.pinterest.ru',   'pinterest.ru',
+            'www.pinterest.jp',   'pinterest.jp',
+        ],
+        // Only accept actual video pin URLs: /pin/<numeric-id>/ — reject boards, profiles, listing pages
+        pathPattern: /^\/pin\/\d+(?:\/|$)/,
+        // pin.it short URLs have a short alphanumeric code with no further path structure
+        shortHosts: ['pin.it'],
+        errorHint: 'e.g. https://www.pinterest.com/pin/123456789/ or https://pin.it/ABC123',
+    },
 };
 
 // ── SSRF blocklist ────────────────────────────────────────────────
@@ -66,6 +89,8 @@ function detectPlatform(hostname, pathname) {
         if (config.hostnames.includes(hostname)) {
             // For YouTube, also allow bare youtu.be IDs
             if (platform === 'youtube' && hostname === 'youtu.be') return platform;
+            // For TikTok short-link redirect hosts, accept any non-empty path
+            if (config.shortHosts && config.shortHosts.includes(hostname) && pathname.length > 1) return platform;
             if (config.pathPattern.test(pathname)) return platform;
             // Facebook: also match ?v= query param URLs
             if (platform === 'facebook') return platform;
@@ -114,6 +139,15 @@ function normalizePlatformUrl(platform, parsed) {
             return {
                 normalized: parsed.href,
                 id: m[1],
+            };
+        }
+        case 'pinterest': {
+            // Normalise short pin.it URLs by preserving original; yt-dlp resolves redirects
+            const pinMatch = parsed.pathname.match(/^\/pin\/(\d+)/);
+            const id = pinMatch ? pinMatch[1] : parsed.pathname.replace(/\//g, '_').replace(/^_/, '') || 'pin';
+            return {
+                normalized: parsed.href,
+                id,
             };
         }
         default:
