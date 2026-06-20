@@ -29,9 +29,11 @@ app.set('trust proxy', 1); // Trust first proxy (Render, Railway, Nginx)
 app.use(helmet());
 
 // ── CORS ─────────────────────────────────────────────────────────
+const envFrontendUrl = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
 const allowedOrigins = [
-    process.env.FRONTEND_URL || 'http://localhost:3000',
-    // Add additional origins here for staging/production
+    envFrontendUrl,
+    'https://reelfetch.xyz',
+    'https://www.reelfetch.xyz'
 ];
 app.use(
     cors({
