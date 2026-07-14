@@ -24,6 +24,26 @@ const YTDLP_PATH = process.env.YTDLP_PATH || 'yt-dlp';
 const YTDLP_TIMEOUT = 45000; // 45s — TikTok can be slow
 const YTDLP_PROXY = process.env.YTDLP_PROXY || null;
 console.log('[debug] YTDLP_PROXY:', process.env.YTDLP_PROXY);
+
+let AXIOS_PROXY_CONFIG = null;
+if (YTDLP_PROXY) {
+    try {
+        const proxyUrlStr = YTDLP_PROXY.includes('://') ? YTDLP_PROXY : `http://${YTDLP_PROXY}`;
+        const parsed = new URL(proxyUrlStr);
+        AXIOS_PROXY_CONFIG = {
+            protocol: parsed.protocol.replace(':', ''),
+            host: parsed.hostname,
+            port: parseInt(parsed.port) || 80,
+            auth: parsed.username ? {
+                username: decodeURIComponent(parsed.username),
+                password: decodeURIComponent(parsed.password)
+            } : undefined
+        };
+        console.log(`[extractor] Configured Axios proxy host: ${AXIOS_PROXY_CONFIG.host}:${AXIOS_PROXY_CONFIG.port}`);
+    } catch (err) {
+        console.error('[extractor] Failed to parse YTDLP_PROXY for Axios:', err.message);
+    }
+}
 // Optional: path to a Netscape-format cookies file (e.g. exported from browser)
 // Set YTDLP_COOKIES_FILE in .env to enable cookie auth for YouTube/etc.
 let YTDLP_COOKIES_FILE = process.env.YTDLP_COOKIES_FILE || null;
@@ -281,6 +301,7 @@ async function tryCheerioExtraction(url) {
             timeout: 10000,
             maxRedirects: 3,
             validateStatus: (s) => s < 500,
+            proxy: AXIOS_PROXY_CONFIG || undefined,
         });
         if (response.status === 404) throw new Error('Reel not found (404).');
         if (response.status === 403 || response.status === 401) throw new Error('Reel is private or requires auth.');
@@ -306,6 +327,7 @@ async function tryEmbedExtraction(url) {
             timeout: 10000,
             maxRedirects: 5,
             validateStatus: (s) => s < 500,
+            proxy: AXIOS_PROXY_CONFIG || undefined,
         });
         if (response.status !== 200) return null;
         const html = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
@@ -332,7 +354,10 @@ async function fetchOembedMetadata(url) {
         const cleanUrl = url.split('?')[0];
         const res = await axios.get(
             `https://www.instagram.com/api/v1/oembed/?url=${encodeURIComponent(cleanUrl)}`,
-            { timeout: 5000 }
+            {
+                timeout: 5000,
+                proxy: AXIOS_PROXY_CONFIG || undefined,
+            }
         );
         return {
             title: res.data.title || 'Instagram Reel',
