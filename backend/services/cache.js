@@ -36,7 +36,10 @@ function getClient() {
 }
 
 const CACHE_PREFIX = 'reelfetch:';
-const TTL_SECONDS = 86400; // 24 hours
+// YouTube CDN URLs are signed to the proxy IP and expire quickly.
+// 10 minutes keeps the API responsive for repeated hits while ensuring
+// users always get a fresh, valid stream URL.
+const TTL_SECONDS = 600; // 10 minutes
 
 /**
  * Get a cached value by key.
