@@ -4,14 +4,24 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { DownloadResponse, extractAudio } from '@/api/client';
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+/** Build a backend proxy URL so downloads work despite IP-signed CDN links */
+function proxyDownloadUrl(videoUrl: string, filename: string): string {
+    return `${API_BASE}/api/proxy-download?url=${encodeURIComponent(videoUrl)}&filename=${encodeURIComponent(filename)}`;
+}
+
 interface VideoPreviewProps {
     data: DownloadResponse;
 }
 
 export default function VideoPreview({ data }: VideoPreviewProps) {
-    const { videoUrl, thumbnail, caption, title, cached } = data;
+    const { videoUrl, thumbnail, caption, title, cached, platform } = data;
     const [audioLoading, setAudioLoading] = useState(false);
     const [audioError, setAudioError] = useState<string | null>(null);
+
+    const filename = `${(title || platform || 'video').replace(/[^a-zA-Z0-9]/g, '_').slice(0, 80)}.mp4`;
+    const downloadUrl = videoUrl ? proxyDownloadUrl(videoUrl, filename) : null;
 
     function handleCopyLink() {
         if (!videoUrl) return;
@@ -81,13 +91,11 @@ export default function VideoPreview({ data }: VideoPreviewProps) {
             )}
 
             {/* Actions */}
-            {videoUrl && (
+            {videoUrl && downloadUrl && (
                 <div className="flex flex-col sm:flex-row gap-3 pt-1">
                     <a
-                        href={videoUrl}
-                        download
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        href={downloadUrl}
+                        download={filename}
                         className="btn-primary flex-1 text-sm py-2.5"
                     >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
