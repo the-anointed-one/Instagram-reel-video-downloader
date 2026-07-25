@@ -426,38 +426,40 @@ async function extractTikTok(url) {
         '--extractor-args', 'tiktok:api_hostname=api22-normal-c-useast2a.tiktokv.com',
     ];
 
-    let videoUrl;
+    let json = null;
     try {
-        // Prefer the play_addr (no-watermark) download URL
-        videoUrl = await runYtDlp(url, extraArgs);
-        console.log('[extractor] ✅ TikTok yt-dlp extraction succeeded');
+        json = await runYtDlpJson(url, extraArgs);
+        console.log('[extractor] ✅ TikTok JSON extraction succeeded');
     } catch (err) {
-        console.log('[extractor] TikTok yt-dlp failed:', err.message);
+        console.log('[extractor] TikTok JSON extraction failed:', err.message);
     }
 
-    if (!videoUrl) {
-        videoUrl = await fetchFromCobalt(url);
+    if (json) {
+        const videoUrl = json.url || (json.formats && json.formats.length > 0 ? json.formats[json.formats.length - 1].url : null);
+        if (videoUrl) {
+            return {
+                videoUrl,
+                title: json.title || json.description || 'TikTok Video',
+                caption: json.description || null,
+                thumbnail: json.thumbnail || null,
+                author: json.uploader || json.creator || null,
+            };
+        }
     }
 
-    if (!videoUrl) {
-        throw new Error(`Could not extract TikTok video.`);
-    }
-
-    // Fetch basic metadata via yt-dlp JSON
-    let metadata = { title: 'TikTok Video', caption: null, thumbnail: null, author: null };
-    try {
-        const json = await runYtDlpJson(url, extraArgs);
-        metadata = {
-            title: json.title || json.description || 'TikTok Video',
-            caption: json.description || null,
-            thumbnail: json.thumbnail || null,
-            author: json.uploader || json.creator || null,
+    // Fallback: try Cobalt API
+    const videoUrl = await fetchFromCobalt(url);
+    if (videoUrl) {
+        return {
+            videoUrl,
+            title: 'TikTok Video',
+            caption: null,
+            thumbnail: null,
+            author: null
         };
-    } catch {
-        // metadata is optional
     }
 
-    return { videoUrl, ...metadata };
+    throw new Error(`Could not extract TikTok video.`);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -469,36 +471,40 @@ async function extractFacebook(url) {
 
     const extraArgs = ['--no-check-certificate'];
 
-    let videoUrl;
+    let json = null;
     try {
-        videoUrl = await runYtDlp(url, extraArgs);
-        console.log('[extractor] ✅ Facebook yt-dlp extraction succeeded');
+        json = await runYtDlpJson(url, extraArgs);
+        console.log('[extractor] ✅ Facebook JSON extraction succeeded');
     } catch (err) {
-        console.log('[extractor] Facebook yt-dlp failed:', err.message);
+        console.log('[extractor] Facebook JSON extraction failed:', err.message);
     }
 
-    if (!videoUrl) {
-        videoUrl = await fetchFromCobalt(url);
+    if (json) {
+        const videoUrl = json.url || (json.formats && json.formats.length > 0 ? json.formats[json.formats.length - 1].url : null);
+        if (videoUrl) {
+            return {
+                videoUrl,
+                title: json.title || 'Facebook Video',
+                caption: json.description || null,
+                thumbnail: json.thumbnail || null,
+                author: json.uploader || null,
+            };
+        }
     }
 
-    if (!videoUrl) {
-        throw new Error(`Could not extract Facebook video.`);
-    }
-
-    let metadata = { title: 'Facebook Video', caption: null, thumbnail: null, author: null };
-    try {
-        const json = await runYtDlpJson(url, extraArgs);
-        metadata = {
-            title: json.title || 'Facebook Video',
-            caption: json.description || null,
-            thumbnail: json.thumbnail || null,
-            author: json.uploader || null,
+    // Fallback: try Cobalt API
+    const videoUrl = await fetchFromCobalt(url);
+    if (videoUrl) {
+        return {
+            videoUrl,
+            title: 'Facebook Video',
+            caption: null,
+            thumbnail: null,
+            author: null
         };
-    } catch {
-        // metadata is optional
     }
 
-    return { videoUrl, ...metadata };
+    throw new Error(`Could not extract Facebook video.`);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -508,105 +514,131 @@ async function extractFacebook(url) {
 async function extractYouTube(url) {
     console.log('[extractor] Extracting YouTube video:', url);
 
-    let videoUrl = null;
-    const androidArgs = [
-        '--no-check-certificate',
-        '--extractor-args', 'youtube:player_client=android'
-    ];
+    const format = 'best[ext=mp4]/bestvideo[ext=mp4]+bestaudio/best';
+    const extraArgs = ['--no-check-certificate', '--format', format];
+    let json = null;
 
-    // Strategy 1: If a proxy is configured, try yt-dlp through the proxy first.
+    // Strategy 1: If a proxy is configured, try via proxy first.
     if (YTDLP_PROXY) {
         try {
-            console.log('[extractor] Trying YouTube via proxy first');
-            videoUrl = await runYtDlp(url, ['--no-check-certificate']);
-            console.log('[extractor] ✅ YouTube extraction succeeded (proxy)');
+            console.log('[extractor] Trying YouTube JSON via proxy');
+            json = await runYtDlpJson(url, extraArgs);
+            console.log('[extractor] ✅ YouTube JSON extraction succeeded (proxy)');
         } catch (err) {
             console.log('[extractor] Proxy attempt failed:', err.message);
         }
     }
 
     // Strategy 2: Try android client next (sometimes bypasses bot detection)
-    if (!videoUrl) {
+    if (!json) {
         try {
-            videoUrl = await runYtDlp(url, androidArgs);
-            console.log('[extractor] ✅ YouTube extraction succeeded (android client)');
+            console.log('[extractor] Trying YouTube JSON via android client');
+            json = await runYtDlpJson(url, [
+                ...extraArgs,
+                '--extractor-args', 'youtube:player_client=android'
+            ]);
+            console.log('[extractor] ✅ YouTube JSON extraction succeeded (android client)');
         } catch (err) {
             console.log('[extractor] Android client failed:', err.message);
         }
     }
 
     // Strategy 3: Try with web client + cookies if available and proxy isn't already handling this.
-    if (!videoUrl && YTDLP_COOKIES_FILE && !YTDLP_PROXY) {
+    if (!json && YTDLP_COOKIES_FILE && !YTDLP_PROXY) {
         try {
-            console.log('[extractor] Retrying YouTube with cookies...');
-            videoUrl = await runYtDlp(url, ['--no-check-certificate']);
-            console.log('[extractor] ✅ YouTube extraction succeeded (with cookies)');
+            console.log('[extractor] Retrying YouTube JSON with cookies...');
+            json = await runYtDlpJson(url, extraArgs);
+            console.log('[extractor] ✅ YouTube JSON extraction succeeded (with cookies)');
         } catch (err) {
             console.log('[extractor] Web client with cookies failed:', err.message);
         }
     }
 
     // Strategy 4: Try browser cookies fallback if no explicit cookie file is configured
-    if (!videoUrl && !YTDLP_COOKIES_FILE) {
+    if (!json && !YTDLP_COOKIES_FILE) {
         try {
             console.log('[extractor] Attempting browser cookies fallback...');
-            videoUrl = await runYtDlp(url, ['--cookies-from-browser', 'chrome']);
-            console.log('[extractor] ✅ YouTube extraction succeeded (browser cookies)');
+            json = await runYtDlpJson(url, [
+                ...extraArgs,
+                '--cookies-from-browser', 'chrome'
+            ]);
+            console.log('[extractor] ✅ YouTube JSON extraction succeeded (browser cookies)');
         } catch (err) {
             console.log('[extractor] Browser cookies fallback failed:', err.message);
         }
     }
 
+    // Extract videoUrl and metadata from JSON if successful
+    if (json) {
+        const videoUrl = json.url || (json.formats && json.formats.length > 0 ? json.formats[json.formats.length - 1].url : null);
+        if (videoUrl) {
+            return {
+                videoUrl,
+                title: json.title || 'YouTube Short',
+                caption: json.description || null,
+                thumbnail: json.thumbnail || null,
+                author: json.uploader || json.channel || null,
+            };
+        }
+    }
+
     // Strategy 5: Finally, fallback to Cobalt API if configured.
-    if (!videoUrl && COBALT_API_URL) {
+    if (COBALT_API_URL) {
         console.log('[extractor] yt-dlp failed, trying Cobalt API fallback...');
-        videoUrl = await fetchFromCobalt(url);
-        if (videoUrl) console.log('[extractor] ✅ YouTube extraction succeeded (Cobalt API)');
+        const videoUrl = await fetchFromCobalt(url);
+        if (videoUrl) {
+            return {
+                videoUrl,
+                title: 'YouTube Video',
+                caption: null,
+                thumbnail: null,
+                author: null
+            };
+        }
     }
 
-    if (!videoUrl) {
-        throw new Error(
-            `Could not extract YouTube video. YouTube requires authentication due to bot detection. ` +
-            `Please set YTDLP_COOKIES_CONTENT or configure a Cobalt API fallback.`
-        );
-    }
-
-    let metadata = { title: 'YouTube Short', caption: null, thumbnail: null, author: null };
-    try {
-        const json = await runYtDlpJson(url, androidArgs);
-        metadata = {
-            title: json.title || 'YouTube Short',
-            caption: json.description || null,
-            thumbnail: json.thumbnail || null,
-            author: json.uploader || json.channel || null,
-        };
-    } catch {
-        // metadata is optional
-    }
-
-    return { videoUrl, ...metadata };
+    throw new Error(
+        `Could not extract YouTube video. YouTube requires authentication due to bot detection. ` +
+        `Please set YTDLP_COOKIES_CONTENT or configure a Cobalt API fallback.`
+    );
 }
 
 async function extractAudioUrl(url, platform) {
-    const audioArgs = ['--get-url', '--format', 'bestaudio[ext=m4a]/bestaudio/best'];
-    const overrideArgs = ['--get-url', '--format', 'bestaudio[ext=m4a]/bestaudio/best', '--no-warnings', '--no-playlist'];
+    console.log('[extractor] Extracting audio:', url);
+    const format = 'bestaudio[ext=m4a]/bestaudio/best';
+    const extraArgs = ['--no-check-certificate', '--format', format];
+    let json = null;
 
-    let audioUrl;
     try {
-        audioUrl = await runYtDlp(url, audioArgs, false, overrideArgs);
+        json = await runYtDlpJson(url, extraArgs);
     } catch (err) {
-        throw new Error(`Could not extract audio. ${err.message}`);
+        console.log('[extractor] Direct audio JSON extraction failed, trying fallback...', err.message);
     }
 
-    let title = 'Audio download';
-    try {
-        const json = await runYtDlpJson(url, []);
-        title = json.title || json.description || title;
-    } catch {
-        // Metadata is optional
+    // Fallback: Try with android player client argument for YouTube
+    if (!json && platform === 'youtube') {
+        try {
+            json = await runYtDlpJson(url, [
+                ...extraArgs,
+                '--extractor-args', 'youtube:player_client=android'
+            ]);
+        } catch (err) {
+            console.log('[extractor] Audio extraction with android client failed:', err.message);
+        }
     }
 
-    return { audioUrl, title, platform };
+    if (json) {
+        const audioUrl = json.url || (json.formats && json.formats.length > 0 ? json.formats[json.formats.length - 1].url : null);
+        if (audioUrl) {
+            return {
+                audioUrl,
+                title: json.title || json.description || 'Audio download',
+                platform
+            };
+        }
+    }
+
+    throw new Error('Could not extract audio URL.');
 }
 
 // ── Pinterest ─────────────────────────────────────────────────────
@@ -669,27 +701,30 @@ async function extractPinterest(url) {
 // ── Twitter/X ─────────────────────────────────────────────────────
 
 async function extractTwitter(url) {
-    let videoUrl;
+    console.log('[extractor] Extracting Twitter video:', url);
+
+    let json = null;
     try {
-        videoUrl = await runYtDlp(url);
+        json = await runYtDlpJson(url);
+        console.log('[extractor] ✅ Twitter JSON extraction succeeded');
     } catch (err) {
-        throw new Error(`Could not extract Twitter video. ${err.message}`);
+        console.log('[extractor] Twitter JSON extraction failed:', err.message);
     }
 
-    let metadata = {};
-    try {
-        const json = await runYtDlpJson(url);
-        metadata = {
-            title: json.title || 'Twitter Video',
-            caption: json.description || null,
-            thumbnail: json.thumbnail || null,
-            author: json.uploader || null,
-        };
-    } catch {
-        // metadata is optional
+    if (json) {
+        const videoUrl = json.url || (json.formats && json.formats.length > 0 ? json.formats[json.formats.length - 1].url : null);
+        if (videoUrl) {
+            return {
+                videoUrl,
+                title: json.title || 'Twitter Video',
+                caption: json.description || null,
+                thumbnail: json.thumbnail || null,
+                author: json.uploader || null,
+            };
+        }
     }
 
-    return { videoUrl, ...metadata };
+    throw new Error(`Could not extract Twitter video.`);
 }
 
 // ═══════════════════════════════════════════════════════════════
