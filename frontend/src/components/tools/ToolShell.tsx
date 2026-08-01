@@ -40,7 +40,9 @@ export default function ToolShell({
                             <span className="font-bold text-white text-lg tracking-tight">ReelFetch</span>
                         </Link>
                         <nav className="flex items-center gap-4 text-sm text-slate-400">
-                            <Link href="/tools" className="hover:text-white transition-colors">Tools</Link>
+                            <Link href="/tools" className="inline-flex items-center gap-1 font-semibold text-amber-400 hover:text-amber-300 transition-colors">
+                                <span aria-hidden>✨</span> AI Tools
+                            </Link>
                             <Link href="/blog" className="hover:text-white transition-colors">Blog</Link>
                             <ThemeToggle />
                         </nav>

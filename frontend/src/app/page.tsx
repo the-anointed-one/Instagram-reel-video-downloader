@@ -76,6 +76,15 @@ export default async function HomePage() {
                 <WebAppJsonLd />
                 <FaqJsonLd faqs={faqs} />
 
+                {/* ── Announcement bar (tools discovery) ──────────────────────── */}
+                <Link
+                    href="/tools"
+                    className="block w-full bg-gradient-to-r from-brand-600/25 to-purple-600/25 border-b border-brand-500/20 text-center text-xs sm:text-sm py-2 px-4 text-brand-100 hover:from-brand-600/35 hover:to-purple-600/35 transition-colors"
+                >
+                    <span className="font-semibold">✨ New:</span> 20+ free AI, image, video &amp; creator tools — no login.{' '}
+                    <span className="font-semibold underline underline-offset-2">Explore all →</span>
+                </Link>
+
                 {/* ── Header ──────────────────────────────────────────────────── */}
                 <header className="sticky top-0 z-50 border-b border-white/5 bg-surface-900/80 backdrop-blur-md">
                     <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
@@ -89,7 +98,12 @@ export default async function HomePage() {
                             <span className="font-bold text-white text-lg tracking-tight">ReelFetch</span>
                         </div>
                         <nav className="flex items-center gap-4 text-sm text-slate-400">
-                            <Link href="/tools" className="hover:text-white transition-colors">Tools</Link>
+                            <Link
+                                href="/tools"
+                                className="inline-flex items-center gap-1 font-semibold text-amber-400 hover:text-amber-300 transition-colors"
+                            >
+                                <span aria-hidden>✨</span> AI Tools
+                            </Link>
                             <Link href="/blog" className="hover:text-white transition-colors">Blog</Link>
                             <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
                             <a
@@ -128,6 +142,31 @@ export default async function HomePage() {
                             <p className="text-slate-500 text-xs font-semibold tracking-widest uppercase">
                                 Instagram · TikTok · Facebook · YouTube Shorts
                             </p>
+
+                            {/* Tool-category quick links — surfaces the platform breadth above the fold */}
+                            <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                                <span className="text-xs text-slate-500">Also free:</span>
+                                {[
+                                    { label: 'AI Writing', emoji: '🤖' },
+                                    { label: 'Image Tools', emoji: '🖼️' },
+                                    { label: 'Video Tools', emoji: '🎞️' },
+                                    { label: 'Creator', emoji: '✨' },
+                                ].map((c) => (
+                                    <Link
+                                        key={c.label}
+                                        href="/tools"
+                                        className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-300 hover:border-brand-500/40 hover:text-white transition-colors"
+                                    >
+                                        <span aria-hidden>{c.emoji}</span> {c.label}
+                                    </Link>
+                                ))}
+                                <Link
+                                    href="/tools"
+                                    className="inline-flex items-center gap-1 rounded-full border border-brand-500/40 bg-brand-500/15 px-3 py-1.5 text-xs font-semibold text-brand-300 hover:bg-brand-500/25 transition-colors"
+                                >
+                                    +16 more →
+                                </Link>
+                            </div>
                         </div>
 
                         {/* Middle: mosaic left + description right — compact two-column */}
