@@ -5,6 +5,7 @@ import { WebAppJsonLd, FaqJsonLd } from '@/components/JsonLd';
 import { getAllPosts } from '@/lib/blog';
 import ThemeToggle from '@/components/ThemeToggle';
 import DownloadCounter from '@/components/DownloadCounter';
+import ToolsShowcase from '@/components/tools/ToolsShowcase';
 
 const faqs = [
     {
@@ -88,6 +89,7 @@ export default async function HomePage() {
                             <span className="font-bold text-white text-lg tracking-tight">ReelFetch</span>
                         </div>
                         <nav className="flex items-center gap-4 text-sm text-slate-400">
+                            <Link href="/tools" className="hover:text-white transition-colors">Tools</Link>
                             <Link href="/blog" className="hover:text-white transition-colors">Blog</Link>
                             <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
                             <a
@@ -348,6 +350,9 @@ export default async function HomePage() {
                     </div>
 
                     <DownloadCounter />
+
+                    {/* ── Tools Showcase ────────────────────────────────────────── */}
+                    <ToolsShowcase />
 
                     {/* ── Tips & Guides Blog Cards ──────────────────────────────── */}
                     {latestPosts.length > 0 && (

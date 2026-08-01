@@ -20,6 +20,7 @@ const morgan = require('morgan');
 const cache = require('./services/cache');
 const { rateLimiter } = require('./middleware/rateLimiter');
 const downloadRouter = require('./routes/download');
+const toolsRouter = require('./routes/tools');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -67,6 +68,7 @@ app.use('/api', rateLimiter);
 
 // ── Routes ───────────────────────────────────────────────────────
 app.use('/api', downloadRouter);
+app.use('/api', toolsRouter);
 
 app.get('/api/stats', async (req, res) => {
     const downloadsToday = await cache.getDailyCounter();

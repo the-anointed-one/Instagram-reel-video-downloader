@@ -50,9 +50,9 @@ function isAllowedProxyHost(hostname) {
 /**
  * GET /api/proxy-download?url=<encoded>&filename=<name>
  *
- * Fetches the remote video/audio through the server and pipes it to the client.
- * This is necessary because YouTube CDN URLs are IP-signed — browsers cannot
- * directly download cross-origin CDN URLs with the `download` attribute.
+ * Fetches the remote video/audio through the Webshare proxy and pipes it
+ * to the client. This is required because YouTube CDN URLs are IP-signed
+ * to the proxy IP — so fetching must also go through the same proxy.
  */
 router.get('/proxy-download', async (req, res) => {
     const { url: rawUrl, filename = 'video.mp4' } = req.query;
@@ -74,65 +74,74 @@ router.get('/proxy-download', async (req, res) => {
     }
 
     const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 200);
-    const protocol = targetUrl.protocol === 'https:' ? https : http;
 
-    const proxyReq = protocol.get(
-        targetUrl.toString(),
-        {
+    // Build axios proxy config from env (same proxy yt-dlp uses to extract)
+    let axiosProxyConfig = false; // false = no proxy
+    const YTDLP_PROXY = process.env.YTDLP_PROXY;
+    if (YTDLP_PROXY) {
+        try {
+            const proxyParsed = new URL(YTDLP_PROXY);
+            axiosProxyConfig = {
+                protocol: proxyParsed.protocol.replace(':', ''),
+                host: proxyParsed.hostname,
+                port: parseInt(proxyParsed.port, 10),
+                auth: proxyParsed.username ? {
+                    username: decodeURIComponent(proxyParsed.username),
+                    password: decodeURIComponent(proxyParsed.password),
+                } : undefined,
+            };
+            console.log('[proxy-download] Routing through proxy:', proxyParsed.hostname + ':' + proxyParsed.port);
+        } catch (e) {
+            console.warn('[proxy-download] Could not parse YTDLP_PROXY, fetching direct:', e.message);
+        }
+    }
+
+    try {
+        const axios = require('axios');
+        const cdnResponse = await axios.get(targetUrl.toString(), {
+            responseType: 'stream',
+            timeout: 60000,
+            proxy: axiosProxyConfig,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (compatible; ReelFetch/1.0)',
-                'Range': req.headers['range'] || '',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Referer': 'https://www.youtube.com/',
+                ...(req.headers['range'] ? { 'Range': req.headers['range'] } : {}),
             },
-        },
-        (proxyRes) => {
-            // Follow one redirect (Google CDN often redirects)
-            if ((proxyRes.statusCode === 301 || proxyRes.statusCode === 302 || proxyRes.statusCode === 307) && proxyRes.headers.location) {
-                proxyRes.destroy();
-                // Recurse with redirect URL — but validate first
-                let redirectUrl;
-                try {
-                    redirectUrl = new URL(proxyRes.headers.location);
-                } catch {
-                    return res.status(502).json({ success: false, error: 'Bad redirect from CDN.' });
-                }
-                if (!isAllowedProxyHost(redirectUrl.hostname)) {
-                    return res.status(403).json({ success: false, error: 'Redirect to disallowed host.' });
-                }
-                const redirectProto = redirectUrl.protocol === 'https:' ? https : http;
-                const redirectReq = redirectProto.get(redirectUrl.toString(), { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ReelFetch/1.0)' } }, (redirectRes) => {
-                    res.setHeader('Content-Disposition', `attachment; filename="${safeFilename}"`);
-                    res.setHeader('Content-Type', redirectRes.headers['content-type'] || 'video/mp4');
-                    if (redirectRes.headers['content-length']) res.setHeader('Content-Length', redirectRes.headers['content-length']);
-                    res.setHeader('Access-Control-Allow-Origin', '*');
-                    redirectRes.pipe(res);
-                });
-                redirectReq.on('error', () => res.status(502).json({ success: false, error: 'Failed to fetch video from CDN.' }));
-                return;
-            }
+            maxRedirects: 5,
+        });
 
-            if (proxyRes.statusCode && proxyRes.statusCode >= 400) {
-                return res.status(proxyRes.statusCode).json({ success: false, error: `CDN returned ${proxyRes.statusCode}` });
-            }
+        const contentType = cdnResponse.headers['content-type'] || 'video/mp4';
+        const contentLength = cdnResponse.headers['content-length'];
 
-            res.setHeader('Content-Disposition', `attachment; filename="${safeFilename}"`);
-            res.setHeader('Content-Type', proxyRes.headers['content-type'] || 'video/mp4');
-            if (proxyRes.headers['content-length']) res.setHeader('Content-Length', proxyRes.headers['content-length']);
-            res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Content-Disposition', `attachment; filename="${safeFilename}"`);
+        res.setHeader('Content-Type', contentType);
+        if (contentLength) res.setHeader('Content-Length', contentLength);
+        res.setHeader('Access-Control-Allow-Origin', '*');
 
-            // Pipe CDN response directly to client
-            proxyRes.pipe(res);
+        if (cdnResponse.status === 206 || cdnResponse.status === 200) {
+            res.status(cdnResponse.status);
         }
-    );
 
-    proxyReq.on('error', (err) => {
-        console.error('[proxy-download] Request error:', err.message);
+        // Pipe CDN stream → client
+        cdnResponse.data.pipe(res);
+
+        cdnResponse.data.on('error', (err) => {
+            console.error('[proxy-download] Stream error:', err.message);
+            if (!res.headersSent) res.status(502).end();
+        });
+
+        req.on('close', () => cdnResponse.data.destroy());
+
+    } catch (err) {
+        console.error('[proxy-download] Error fetching CDN URL:', err.message);
         if (!res.headersSent) {
-            res.status(502).json({ success: false, error: 'Failed to fetch video from CDN.' });
+            const status = err.response?.status || 502;
+            res.status(status).json({ success: false, error: `CDN fetch failed: ${err.message}` });
         }
-    });
-
-    req.on('close', () => proxyReq.destroy());
+    }
 });
+
+
 
 
 router.post('/download', async (req, res) => {

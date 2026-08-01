@@ -116,6 +116,44 @@ async function getDailyCounter() {
 }
 
 /**
+ * Generic atomic counter — increment `key` by `amount`.
+ * Sets a TTL only on first creation so the window is fixed from first write.
+ * Used by the tools budget/spend-cap tracking. Degrades to 0 if Redis is down.
+ * @param {string} key
+ * @param {number} [amount=1]
+ * @param {number} [ttlSeconds] — expiry applied only when the key is first created
+ * @returns {Promise<number>} new counter value (0 on error)
+ */
+async function increment(key, amount = 1, ttlSeconds) {
+    try {
+        const full = CACHE_PREFIX + key;
+        const count = await getClient().incrby(full, amount);
+        if (count === amount && ttlSeconds) {
+            await getClient().expire(full, ttlSeconds);
+        }
+        return count;
+    } catch (err) {
+        console.warn('[cache] increment error:', err.message);
+        return 0;
+    }
+}
+
+/**
+ * Read a numeric counter value. Returns 0 on miss or Redis error.
+ * @param {string} key
+ * @returns {Promise<number>}
+ */
+async function getNumber(key) {
+    try {
+        const raw = await getClient().get(CACHE_PREFIX + key);
+        return raw ? parseInt(raw, 10) : 0;
+    } catch (err) {
+        console.warn('[cache] getNumber error:', err.message);
+        return 0;
+    }
+}
+
+/**
  * Connect Redis client explicitly (called at startup).
  */
 async function connect() {
@@ -126,4 +164,4 @@ async function connect() {
     }
 }
 
-module.exports = { get, set, connect, incrementDailyCounter, getDailyCounter };
+module.exports = { get, set, connect, incrementDailyCounter, getDailyCounter, increment, getNumber };
